@@ -1,0 +1,473 @@
+---
+title: "S2_Merge"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r setup, include=FALSE}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+
+S2A_rasters <- paste0(filepath,"Outputs/S2/Raster_stats/S2A/")
+S2B_rasters <- paste0(filepath, "Outputs/S2/Raster_stats/S2B/")
+
+S2A_tables <- paste0(filepath, "Outputs/S2/Tables/S2A/")
+S2B_tables <- paste0(filepath, "Outputs/S2/Tables/S2B/")
+
+out_rast <- paste0(filepath, "Outputs/S2/Raster_stats/S2/")
+out_tab <- paste0(filepath, "Outputs/S2/Tables/S2/")
+
+```
+
+#Read in S2A Rasters
+```{r}
+#2021
+S2A_count_2021 <- raster(paste0(S2A_rasters, "2021/S2_count.tif"))
+S2A_mean_2021 <- raster(paste0(S2A_rasters, "2021/S2_mean.tif"))
+S2A_max_2021 <- raster(paste0(S2A_rasters, "2021/S2_max.tif"))
+S2A_min_2021 <- raster(paste0(S2A_rasters, "2021/S2_min.tif"))
+S2A_range_2021 <- raster(paste0(S2A_rasters, "2021/S2_range.tif"))
+S2A_median_2021 <- raster(paste0(S2A_rasters, "2021/S2_median.tif"))
+S2A_stdv_2021 <- raster(paste0(S2A_rasters, "2021/S2_stdv.tif"))
+
+#2020
+S2A_count_2020 <- raster(paste0(S2A_rasters, "2020/S2_count.tif"))
+S2A_mean_2020 <- raster(paste0(S2A_rasters, "2020/S2_mean.tif"))
+S2A_max_2020 <- raster(paste0(S2A_rasters, "2020/S2_max.tif"))
+S2A_min_2020 <- raster(paste0(S2A_rasters, "2020/S2_min.tif"))
+S2A_range_2020 <- raster(paste0(S2A_rasters, "2020/S2_range.tif"))
+S2A_median_2020 <- raster(paste0(S2A_rasters, "2020/S2_median.tif"))
+S2A_stdv_2020 <- raster(paste0(S2A_rasters, "2020/S2_stdv.tif"))
+
+#2019
+S2A_count_2019 <- raster(paste0(S2A_rasters, "2019/S2_count.tif"))
+S2A_mean_2019 <- raster(paste0(S2A_rasters, "2019/S2_mean.tif"))
+S2A_max_2019 <- raster(paste0(S2A_rasters, "2019/S2_max.tif"))
+S2A_min_2019 <- raster(paste0(S2A_rasters, "2019/S2_min.tif"))
+S2A_range_2019 <- raster(paste0(S2A_rasters, "2019/S2_range.tif"))
+S2A_median_2019 <- raster(paste0(S2A_rasters, "2019/S2_median.tif"))
+S2A_stdv_2019 <- raster(paste0(S2A_rasters, "2019/S2_stdv.tif"))
+
+#2018
+S2A_count_2018 <- raster(paste0(S2A_rasters, "2018/S2_count.tif"))
+S2A_mean_2018 <- raster(paste0(S2A_rasters, "2018/S2_mean.tif"))
+S2A_max_2018 <- raster(paste0(S2A_rasters, "2018/S2_max.tif"))
+S2A_min_2018 <- raster(paste0(S2A_rasters, "2018/S2_min.tif"))
+S2A_range_2018 <- raster(paste0(S2A_rasters, "2018/S2_range.tif"))
+S2A_median_2018 <- raster(paste0(S2A_rasters, "2018/S2_median.tif"))
+S2A_stdv_2018 <- raster(paste0(S2A_rasters, "2018/S2_stdv.tif"))
+
+#2017
+S2A_count_2017 <- raster(paste0(S2A_rasters, "2017/S2_count.tif"))
+S2A_mean_2017 <- raster(paste0(S2A_rasters, "2017/S2_mean.tif"))
+S2A_max_2017 <- raster(paste0(S2A_rasters, "2017/S2_max.tif"))
+S2A_min_2017 <- raster(paste0(S2A_rasters, "2017/S2_min.tif"))
+S2A_range_2017 <- raster(paste0(S2A_rasters, "2017/S2_range.tif"))
+S2A_median_2017 <- raster(paste0(S2A_rasters, "2017/S2_median.tif"))
+S2A_stdv_2017 <- raster(paste0(S2A_rasters, "2017/S2_stdv.tif"))
+
+```
+
+#Read in S2B Rasters
+```{r}
+#2021
+S2B_count_2021 <- raster(paste0(S2B_rasters, "2021/S2_count.tif"))
+S2B_mean_2021 <- raster(paste0(S2B_rasters, "2021/S2_mean.tif"))
+S2B_max_2021 <- raster(paste0(S2B_rasters, "2021/S2_max.tif"))
+S2B_min_2021 <- raster(paste0(S2B_rasters, "2021/S2_min.tif"))
+S2B_range_2021 <- raster(paste0(S2B_rasters, "2021/S2_range.tif"))
+S2B_median_2021 <- raster(paste0(S2B_rasters, "2021/S2_median.tif"))
+S2B_stdv_2021 <- raster(paste0(S2B_rasters, "2021/S2_stdv.tif"))
+
+#2020
+S2B_count_2020 <- raster(paste0(S2B_rasters, "2020/S2_count.tif"))
+S2B_mean_2020 <- raster(paste0(S2B_rasters, "2020/S2_mean.tif"))
+S2B_max_2020 <- raster(paste0(S2B_rasters, "2020/S2_max.tif"))
+S2B_min_2020 <- raster(paste0(S2B_rasters, "2020/S2_min.tif"))
+S2B_range_2020 <- raster(paste0(S2B_rasters, "2020/S2_range.tif"))
+S2B_median_2020 <- raster(paste0(S2B_rasters, "2020/S2_median.tif"))
+S2B_stdv_2020 <- raster(paste0(S2B_rasters, "2020/S2_stdv.tif"))
+
+#2019
+S2B_count_2019 <- raster(paste0(S2B_rasters, "2019/S2_count.tif"))
+S2B_mean_2019 <- raster(paste0(S2B_rasters, "2019/S2_mean.tif"))
+S2B_max_2019 <- raster(paste0(S2B_rasters, "2019/S2_max.tif"))
+S2B_min_2019 <- raster(paste0(S2B_rasters, "2019/S2_min.tif"))
+S2B_range_2019 <- raster(paste0(S2B_rasters, "2019/S2_range.tif"))
+S2B_median_2019 <- raster(paste0(S2B_rasters, "2019/S2_median.tif"))
+S2B_stdv_2019 <- raster(paste0(S2B_rasters, "2019/S2_stdv.tif"))
+
+#2018
+S2B_count_2018 <- raster(paste0(S2B_rasters, "2018/S2_count.tif"))
+S2B_mean_2018 <- raster(paste0(S2B_rasters, "2018/S2_mean.tif"))
+S2B_max_2018 <- raster(paste0(S2B_rasters, "2018/S2_max.tif"))
+S2B_min_2018 <- raster(paste0(S2B_rasters, "2018/S2_min.tif"))
+S2B_range_2018 <- raster(paste0(S2B_rasters, "2018/S2_range.tif"))
+S2B_median_2018 <- raster(paste0(S2B_rasters, "2018/S2_median.tif"))
+S2B_stdv_2018 <- raster(paste0(S2B_rasters, "2018/S2_stdv.tif"))
+
+#2017
+S2B_count_2017 <- raster(paste0(S2B_rasters, "2017/S2_count.tif"))
+S2B_mean_2017 <- raster(paste0(S2B_rasters, "2017/S2_mean.tif"))
+S2B_max_2017 <- raster(paste0(S2B_rasters, "2017/S2_max.tif"))
+S2B_min_2017 <- raster(paste0(S2B_rasters, "2017/S2_min.tif"))
+S2B_range_2017 <- raster(paste0(S2B_rasters, "2017/S2_range.tif"))
+S2B_median_2017 <- raster(paste0(S2B_rasters, "2017/S2_median.tif"))
+S2B_stdv_2017 <- raster(paste0(S2B_rasters, "2017/S2_stdv.tif"))
+
+```
+
+#Stack rasters by year
+```{r}
+S2_count_2021 <- stack(S2A_count_2021, S2B_count_2021)
+S2_mean_2021 <- stack(S2A_mean_2021, S2B_mean_2021)
+S2_max_2021 <- stack(S2A_max_2021, S2B_max_2021)
+S2_min_2021 <- stack(S2A_min_2021, S2B_min_2021)
+S2_range_2021 <- stack(S2A_range_2021, S2B_range_2021)
+S2_median_2021 <- stack(S2A_median_2021, S2B_median_2021)
+S2_stdv_2021 <- stack(S2A_stdv_2021, S2B_stdv_2021)
+
+writeRaster(S2_count_2021, paste0(out_rast,"2021/S2_count.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_mean_2021, paste0(out_rast,"2021/S2_mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_max_2021, paste0(out_rast,"2021/S2_max.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_min_2021, paste0(out_rast,"2021/S2_min.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_range_2021, paste0(out_rast,"2021/S2_range.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_median_2021, paste0(out_rast,"2021/S2_median.tif"),format = "GTiff",overwrite = T)
+writeRaster(S2_stdv_2021, paste0(out_rast,"2021/S2_stdv.tif"), format = "GTiff", overwrite = T)
+
+S2_count_2020 <- stack(S2A_count_2020, S2B_count_2020)
+S2_mean_2020 <- stack(S2A_mean_2020, S2B_mean_2020)
+S2_max_2020 <- stack(S2A_max_2020, S2B_max_2020)
+S2_min_2020 <- stack(S2A_min_2020, S2B_min_2020)
+S2_range_2020 <- stack(S2A_range_2020, S2B_range_2020)
+S2_median_2020 <- stack(S2A_median_2020, S2B_median_2020)
+S2_stdv_2020 <- stack(S2A_stdv_2020, S2B_stdv_2020)
+
+writeRaster(S2_count_2020, paste0(out_rast,"2020/S2_count.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_mean_2020, paste0(out_rast,"2020/S2_mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_max_2020, paste0(out_rast,"2020/S2_max.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_min_2020, paste0(out_rast,"2020/S2_min.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_range_2020, paste0(out_rast,"2020/S2_range.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_median_2020, paste0(out_rast,"2020/S2_median.tif"),format = "GTiff",overwrite = T)
+writeRaster(S2_stdv_2020, paste0(out_rast,"2020/S2_stdv.tif"), format = "GTiff", overwrite = T)
+
+S2_count_2019 <- stack(S2A_count_2019, S2B_count_2019)
+S2_mean_2019 <- stack(S2A_mean_2019, S2B_mean_2019)
+S2_max_2019 <- stack(S2A_max_2019, S2B_max_2019)
+S2_min_2019 <- stack(S2A_min_2019, S2B_min_2019)
+S2_range_2019 <- stack(S2A_range_2019, S2B_range_2019)
+S2_median_2019 <- stack(S2A_median_2019, S2B_median_2019)
+S2_stdv_2019 <- stack(S2A_stdv_2019, S2B_stdv_2019)
+
+writeRaster(S2_count_2019, paste0(out_rast,"2019/S2_count.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_mean_2019, paste0(out_rast,"2019/S2_mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_max_2019, paste0(out_rast,"2019/S2_max.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_min_2019, paste0(out_rast,"2019/S2_min.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_range_2019, paste0(out_rast,"2019/S2_range.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_median_2019, paste0(out_rast,"2019/S2_median.tif"),format = "GTiff",overwrite = T)
+writeRaster(S2_stdv_2019, paste0(out_rast,"2019/S2_stdv.tif"), format = "GTiff", overwrite = T)
+
+S2_count_2018 <- stack(S2A_count_2018, S2B_count_2018)
+S2_mean_2018 <- stack(S2A_mean_2018, S2B_mean_2018)
+S2_max_2018 <- stack(S2A_max_2018, S2B_max_2018)
+S2_min_2018 <- stack(S2A_min_2018, S2B_min_2018)
+S2_range_2018 <- stack(S2A_range_2018, S2B_range_2018)
+S2_median_2018 <- stack(S2A_median_2018, S2B_median_2018)
+S2_stdv_2018 <- stack(S2A_stdv_2018, S2B_stdv_2018)
+
+writeRaster(S2_count_2018, paste0(out_rast,"2018/S2_count.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_mean_2018, paste0(out_rast,"2018/S2_mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_max_2018, paste0(out_rast,"2018/S2_max.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_min_2018, paste0(out_rast,"2018/S2_min.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_range_2018, paste0(out_rast,"2018/S2_range.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_median_2018, paste0(out_rast,"2018/S2_median.tif"),format = "GTiff",overwrite = T)
+writeRaster(S2_stdv_2018, paste0(out_rast,"2018/S2_stdv.tif"), format = "GTiff", overwrite = T)
+
+S2_count_2017 <- stack(S2A_count_2017, S2B_count_2017)
+S2_mean_2017 <- stack(S2A_mean_2017, S2B_mean_2017)
+S2_max_2017 <- stack(S2A_max_2017, S2B_max_2017)
+S2_min_2017 <- stack(S2A_min_2017, S2B_min_2017)
+S2_range_2017 <- stack(S2A_range_2017, S2B_range_2017)
+S2_median_2017 <- stack(S2A_median_2017, S2B_median_2017)
+S2_stdv_2017 <- stack(S2A_stdv_2017, S2B_stdv_2017)
+
+writeRaster(S2_count_2017, paste0(out_rast,"2017/S2_count.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_mean_2017, paste0(out_rast,"2017/S2_mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_max_2017, paste0(out_rast,"2017/S2_max.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_min_2017, paste0(out_rast,"2017/S2_min.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_range_2017, paste0(out_rast,"2017/S2_range.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_median_2017, paste0(out_rast,"2017/S2_median.tif"),format = "GTiff",overwrite = T)
+writeRaster(S2_stdv_2017, paste0(out_rast,"2017/S2_stdv.tif"), format = "GTiff", overwrite = T)
+
+```
+
+#Stack rasters
+```{r}
+#Count
+S2A_count <- stack(S2A_count_2017, S2A_count_2018, S2A_count_2019, S2A_count_2020,  S2A_count_2021)
+S2B_count <- stack(S2B_count_2017, S2B_count_2018, S2B_count_2019, S2B_count_2020, S2B_count_2021)
+S2_count <- stack(S2A_count, S2B_count)
+
+#mean
+S2A_mean <- stack(S2A_mean_2017, S2A_mean_2018, S2A_mean_2019, S2A_mean_2020,  S2A_mean_2021)
+S2B_mean <- stack(S2B_mean_2017, S2B_mean_2018, S2B_mean_2019, S2B_mean_2020, S2B_mean_2021)
+S2_mean <- stack(S2A_mean, S2B_mean)
+
+#median
+S2A_median <- stack(S2A_median_2017, S2A_median_2018, S2A_median_2019, S2A_median_2020,  S2A_median_2021)
+S2B_median <- stack(S2B_median_2017, S2B_median_2018, S2B_median_2019, S2B_median_2020, S2B_median_2021)
+S2_median <- stack(S2A_median, S2B_median)
+
+#max
+S2A_max <- stack(S2A_max_2017, S2A_max_2018, S2A_max_2019, S2A_max_2020,  S2A_max_2021)
+S2B_max <- stack(S2B_max_2017, S2B_max_2018, S2B_max_2019, S2B_max_2020, S2B_max_2021)
+S2_max <- stack(S2A_max, S2B_max)
+
+#min
+S2A_min <- stack(S2A_min_2017, S2A_min_2018, S2A_min_2019, S2A_min_2020,  S2A_min_2021)
+S2B_min <- stack(S2B_min_2017, S2B_min_2018, S2B_min_2019, S2B_min_2020, S2B_min_2021)
+S2_min <- stack(S2A_min, S2B_min)
+
+#range
+S2A_range <- stack(S2A_range_2017, S2A_range_2018, S2A_range_2019, S2A_range_2020,  S2A_range_2021)
+S2B_range <- stack(S2B_range_2017, S2B_range_2018, S2B_range_2019, S2B_range_2020, S2B_range_2021)
+S2_range <- stack(S2A_range, S2B_range)
+
+#stdv
+S2A_stdv <- stack(S2A_stdv_2017, S2A_stdv_2018, S2A_stdv_2019, S2A_stdv_2020,  S2A_stdv_2021)
+S2B_stdv <- stack(S2B_stdv_2017, S2B_stdv_2018, S2B_stdv_2019, S2B_stdv_2020, S2B_stdv_2021)
+S2_stdv <- stack(S2A_stdv, S2B_stdv)
+
+```
+
+#Merge rasters and export
+```{r}
+S2_count_rast <- stackApply(S2_count, indices =  rep(1,nlayers(S2_count)), fun = "sum", na.rm = T)
+S2_mean_rast <- stackApply(S2_mean, indices =  rep(1,nlayers(S2_mean)), fun = "mean", na.rm = T)
+S2_median_rast <- stackApply(S2_median, indices =  rep(1,nlayers(S2_median)), fun = "mean", na.rm = T)
+S2_max_rast <- stackApply(S2_max, indices =  rep(1,nlayers(S2_max)), fun = "max", na.rm = T)
+S2_min_rast <- stackApply(S2_min, indices =  rep(1,nlayers(S2_min)), fun = "min", na.rm = T)
+S2_range_rast <- stackApply(S2_range, indices =  rep(1,nlayers(S2_range)), fun = "mean", na.rm = T)
+S2_stdv_rast <- stackApply(S2_stdv, indices =  rep(1,nlayers(S2_stdv)), fun = "mean", na.rm = T)
+
+writeRaster(S2_mean_rast, paste0(out_rast, "Year_avg/S2_mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_count_rast, paste0(out_rast, "Year_avg/S2_count.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_max_rast, paste0(out_rast, "Year_avg/S2_max.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_min_rast, paste0(out_rast, "Year_avg/S2_min.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_range_rast, paste0(out_rast, "Year_avg/S2_range.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_stdv_rast, paste0(out_rast, "Year_avg/S2_stdv.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_median_rast, paste0(out_rast, "Year_avg/S2_median.tif"), format = "GTiff", overwrite = T)
+
+```
+
+#Read in S2A tables
+```{r}
+#S2A
+#2017
+S2A_random_2017 <- read.csv(paste0(S2A_tables, "2017/random_sa.csv"))
+S2A_regular_2017 <- read.csv(paste0(S2A_tables, "2017/regular_sa.csv"))
+S2A_strat_2017 <- read.csv(paste0(S2A_tables, "2017/stratified_sa.csv"))
+S2A_site_2017 <- read.csv(paste0(S2A_tables, "2017/site_sa.csv"))
+
+#2018
+S2A_random_2018 <- read.csv(paste0(S2A_tables, "2018/random_sa.csv"))
+S2A_regular_2018 <- read.csv(paste0(S2A_tables, "2018/regular_sa.csv"))
+S2A_strat_2018 <- read.csv(paste0(S2A_tables, "2018/stratified_sa.csv"))
+S2A_site_2018 <- read.csv(paste0(S2A_tables, "2018/site_sa.csv"))
+
+#2019
+S2A_random_2019 <- read.csv(paste0(S2A_tables, "2019/random_sa.csv"))
+S2A_regular_2019 <- read.csv(paste0(S2A_tables, "2019/regular_sa.csv"))
+S2A_strat_2019 <- read.csv(paste0(S2A_tables, "2019/stratified_sa.csv"))
+S2A_site_2019 <- read.csv(paste0(S2A_tables, "2019/site_sa.csv"))
+
+#2020
+S2A_random_2020 <- read.csv(paste0(S2A_tables, "2020/random_sa.csv"))
+S2A_regular_2020 <- read.csv(paste0(S2A_tables, "2020/regular_sa.csv"))
+S2A_strat_2020 <- read.csv(paste0(S2A_tables, "2020/stratified_sa.csv"))
+S2A_site_2020 <- read.csv(paste0(S2A_tables, "2020/site_sa.csv"))
+
+#2021
+S2A_random_2021 <- read.csv(paste0(S2A_tables, "2021/random_sa.csv"))
+S2A_regular_2021 <- read.csv(paste0(S2A_tables, "2021/regular_sa.csv"))
+S2A_strat_2021 <- read.csv(paste0(S2A_tables, "2021/stratified_sa.csv"))
+S2A_site_2021 <- read.csv(paste0(S2A_tables, "2021/site_sa.csv"))
+
+
+#S2B
+#2017
+S2B_random_2017 <- read.csv(paste0(S2B_tables, "2017/random_sa.csv"))
+S2B_regular_2017 <- read.csv(paste0(S2B_tables, "2017/regular_sa.csv"))
+S2B_strat_2017 <- read.csv(paste0(S2B_tables, "2017/stratified_sa.csv"))
+S2B_site_2017 <- read.csv(paste0(S2B_tables, "2017/site_sa.csv"))
+
+#2018
+S2B_random_2018 <- read.csv(paste0(S2B_tables, "2018/random_sa.csv"))
+S2B_regular_2018 <- read.csv(paste0(S2B_tables, "2018/regular_sa.csv"))
+S2B_strat_2018 <- read.csv(paste0(S2B_tables, "2018/stratified_sa.csv"))
+S2B_site_2018 <- read.csv(paste0(S2B_tables, "2018/site_sa.csv"))
+
+#2019
+S2B_random_2019 <- read.csv(paste0(S2B_tables, "2019/random_sa.csv"))
+S2B_regular_2019 <- read.csv(paste0(S2B_tables, "2019/regular_sa.csv"))
+S2B_strat_2019 <- read.csv(paste0(S2B_tables, "2019/stratified_sa.csv"))
+S2B_site_2019 <- read.csv(paste0(S2B_tables, "2019/site_sa.csv"))
+
+#2020
+S2B_random_2020 <- read.csv(paste0(S2B_tables, "2020/random_sa.csv"))
+S2B_regular_2020 <- read.csv(paste0(S2B_tables, "2020/regular_sa.csv"))
+S2B_strat_2020 <- read.csv(paste0(S2B_tables, "2020/stratified_sa.csv"))
+S2B_site_2020 <- read.csv(paste0(S2B_tables, "2020/site_sa.csv"))
+
+#2021
+S2B_random_2021 <- read.csv(paste0(S2B_tables, "2021/random_sa.csv"))
+S2B_regular_2021 <- read.csv(paste0(S2B_tables, "2021/regular_sa.csv"))
+S2B_strat_2021 <- read.csv(paste0(S2B_tables, "2021/stratified_sa.csv"))
+S2B_site_2021 <- read.csv(paste0(S2B_tables, "2021/site_sa.csv"))
+
+```
+
+#Merge tables year by year
+```{r}
+S2_random_2021 <- list(S2A_random_2021, S2B_random_2021)
+S2_random_2020 <- list(S2A_random_2020, S2B_random_2020)
+S2_random_2019 <- list(S2A_random_2019, S2B_random_2019)
+S2_random_2018 <- list(S2A_random_2018, S2B_random_2018)
+S2_random_2017 <- list(S2A_random_2017, S2B_random_2017)
+
+S2_random_2021.2 <- S2_random_2021 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_random_2020.2 <-S2_random_2020 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_random_2019.2 <- S2_random_2019 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_random_2018.2 <- S2_random_2018 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_random_2017.2 <- S2_random_2017 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+S2_random_2021.3 <- merge(S2_random_2021.2, S2_random_2021.2)
+S2_random_2020.3 <- merge(S2_random_2020.2, S2_random_2020.2)
+S2_random_2019.3 <- merge(S2_random_2019.2, S2_random_2019.2)
+S2_random_2018.3 <- merge(S2_random_2018.2, S2_random_2018.2)
+S2_random_2017.3 <- merge(S2_random_2017.2, S2_random_2017.2)
+
+write.csv(S2_random_2021.3, paste0(out_tab, "2021/random_sa.csv"))
+write.csv(S2_random_2020.3, paste0(out_tab, "2020/random_sa.csv"))
+write.csv(S2_random_2019.3, paste0(out_tab, "2019/random_sa.csv"))
+write.csv(S2_random_2018.3, paste0(out_tab, "2018/random_sa.csv"))
+write.csv(S2_random_2017.3, paste0(out_tab, "2017/random_sa.csv"))
+
+
+S2_regular_2021 <- list(S2A_regular_2021, S2B_regular_2021)
+S2_regular_2020 <- list(S2A_regular_2020, S2B_regular_2020)
+S2_regular_2019 <- list(S2A_regular_2019, S2B_regular_2019)
+S2_regular_2018 <- list(S2A_regular_2018, S2B_regular_2018)
+S2_regular_2017 <- list(S2A_regular_2017, S2B_regular_2017)
+
+S2_regular_2021.2 <- S2_regular_2021 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_regular_2020.2 <-S2_regular_2020 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_regular_2019.2 <- S2_regular_2019 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_regular_2018.2 <- S2_regular_2018 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_regular_2017.2 <- S2_regular_2017 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+
+S2_regular_2021.3 <- merge(S2_regular_2021.2, S2_regular_2021.2)
+S2_regular_2020.3 <- merge(S2_regular_2020.2, S2_regular_2020.2)
+S2_regular_2019.3 <- merge(S2_regular_2019.2, S2_regular_2019.2)
+S2_regular_2018.3 <- merge(S2_regular_2018.2, S2_regular_2018.2)
+S2_regular_2017.3 <- merge(S2_regular_2017.2, S2_regular_2017.2)
+
+write.csv(S2_regular_2021.3, paste0(out_tab, "2021/regular_sa.csv"))
+write.csv(S2_regular_2020.3, paste0(out_tab, "2020/regular_sa.csv"))
+write.csv(S2_regular_2019.3, paste0(out_tab, "2019/regular_sa.csv"))
+write.csv(S2_regular_2018.3, paste0(out_tab, "2018/regular_sa.csv"))
+write.csv(S2_regular_2017.3, paste0(out_tab, "2017/regular_sa.csv"))
+
+
+S2_site_2021 <- list(S2A_site_2021, S2B_site_2021)
+S2_site_2020 <- list(S2A_site_2020, S2B_site_2020)
+S2_site_2019 <- list(S2A_site_2019, S2B_site_2019)
+S2_site_2018 <- list(S2A_site_2018, S2B_site_2018)
+S2_site_2017 <- list(S2A_site_2017, S2B_site_2017)
+
+S2_site_2021.2 <- S2_site_2021 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_site_2020.2 <-S2_site_2020 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_site_2019.2 <- S2_site_2019 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_site_2018.2 <- S2_site_2018 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_site_2017.2 <- S2_site_2017 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+S2_site_2021.3 <- merge(S2_site_2021.2, S2_site_2021.2)
+S2_site_2020.3 <- merge(S2_site_2020.2, S2_site_2020.2)
+S2_site_2019.3 <- merge(S2_site_2019.2, S2_site_2019.2)
+S2_site_2018.3 <- merge(S2_site_2018.2, S2_site_2018.2)
+S2_site_2017.3 <- merge(S2_site_2017.2, S2_site_2017.2)
+
+write.csv(S2_site_2021.3, paste0(out_tab, "2021/site_sa.csv"))
+write.csv(S2_site_2020.3, paste0(out_tab, "2020/site_sa.csv"))
+write.csv(S2_site_2019.3, paste0(out_tab, "2019/site_sa.csv"))
+write.csv(S2_site_2018.3, paste0(out_tab, "2018/site_sa.csv"))
+write.csv(S2_site_2017.3, paste0(out_tab, "2017/site_sa.csv"))
+
+
+S2_strat_2021 <- list(S2A_strat_2021, S2B_strat_2021)
+S2_strat_2020 <- list(S2A_strat_2020, S2B_strat_2020)
+S2_strat_2019 <- list(S2A_strat_2019, S2B_strat_2019)
+S2_strat_2018 <- list(S2A_strat_2018, S2B_strat_2018)
+S2_strat_2017 <- list(S2A_strat_2017, S2B_strat_2017)
+
+S2_strat_2021.2 <- S2_strat_2021 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_strat_2020.2 <-S2_strat_2020 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_strat_2019.2 <- S2_strat_2019 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_strat_2018.2 <- S2_strat_2018 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2_strat_2017.2 <- S2_strat_2017 %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+S2_strat_2021.3 <- merge(S2_strat_2021.2, S2_strat_2021.2)
+S2_strat_2020.3 <- merge(S2_strat_2020.2, S2_strat_2020.2)
+S2_strat_2019.3 <- merge(S2_strat_2019.2, S2_strat_2019.2)
+S2_strat_2018.3 <- merge(S2_strat_2018.2, S2_strat_2018.2)
+S2_strat_2017.3 <- merge(S2_strat_2017.2, S2_strat_2017.2)
+
+write.csv(S2_strat_2021.3, paste0(out_tab, "2021/strat_sa.csv"))
+write.csv(S2_strat_2020.3, paste0(out_tab, "2020/strat_sa.csv"))
+write.csv(S2_strat_2019.3, paste0(out_tab, "2019/strat_sa.csv"))
+write.csv(S2_strat_2018.3, paste0(out_tab, "2018/strat_sa.csv"))
+write.csv(S2_strat_2017.3, paste0(out_tab, "2017/strat_sa.csv"))
+
+```
+
+#Merge tables all years
+```{r}
+S2A_random_list <- list(S2A_random_2017, S2A_random_2018, S2A_random_2019, S2A_random_2020, S2A_random_2021)
+S2A_regular_list <- list(S2A_regular_2017, S2A_regular_2018, S2A_regular_2019, S2A_regular_2020, S2A_regular_2021)
+S2A_site_list <- list(S2A_site_2017, S2A_site_2018, S2A_site_2019, S2A_site_2020, S2A_site_2021)
+S2A_strat_list <- list(S2A_strat_2017, S2A_strat_2018, S2A_strat_2019, S2A_strat_2020, S2A_strat_2021)
+
+S2A_random_tab <- S2A_random_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2A_regular_tab <- S2A_regular_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2A_site_tab <- S2A_site_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2A_strat_tab <- S2A_strat_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+S2B_random_list <- list(S2B_random_2017, S2B_random_2018, S2B_random_2019, S2B_random_2020, S2B_random_2021)
+S2B_regular_list <- list(S2B_regular_2017, S2B_regular_2018, S2B_regular_2019, S2B_regular_2020, S2B_regular_2021)
+S2B_site_list <- list(S2B_site_2017, S2B_site_2018, S2B_site_2019, S2B_site_2020, S2B_site_2021)
+S2B_strat_list <- list(S2B_strat_2017, S2B_strat_2018, S2B_strat_2019, S2B_strat_2020, S2B_strat_2021)
+
+S2B_random_tab <- S2B_random_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2B_regular_tab <- S2B_regular_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2B_site_tab <- S2B_site_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+S2B_strat_tab <- S2B_strat_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+S2_random_tab <- merge(S2A_random_tab, S2B_random_tab)
+S2_regular_tab <- merge(S2A_regular_tab, S2B_regular_tab)
+S2_strat_tab <- merge(S2A_strat_tab, S2B_strat_tab)
+S2_site_tab <- merge(S2A_site_tab, S2B_site_tab)
+
+write.csv(S2_random_tab, paste0(out_tab, "All_years/random_sa.csv"))
+write.csv(S2_regular_tab, paste0(out_tab, "All_years/regular_sa.csv"))
+write.csv(S2_strat_tab, paste0(out_tab, "All_years/strat_sa.csv"))
+write.csv(S2_site_tab, paste0(out_tab, "All_years/site_sa.csv"))
+
+```

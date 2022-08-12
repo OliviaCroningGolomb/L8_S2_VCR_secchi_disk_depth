@@ -1,0 +1,128 @@
+---
+title: "L8_Timeseries_Tables"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r, include = F}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+library(zoo)
+library(tidyverse)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+year <- "2021/"
+L8_Tabs <- paste0(filepath, "Outputs/L8/Tables/", year)
+
+```
+
+#Extract dates for time series
+```{r, include = F}
+#Read in extracted data
+extract_sites <- read.csv(paste0(L8_Tabs, 'site_sa.csv'))
+extract_random <- read.csv(paste0(L8_Tabs, 'random_sa.csv'))
+extract_stratified <- read.csv(paste0(L8_Tabs, 'strat_sa.csv'))
+extract_regular <- read.csv(paste0(L8_Tabs, 'regular_sa.csv'))
+
+#Get filenames
+meta_info  <- t(extract_sites)
+meta_info$names <- rownames(meta_info)
+meta_info <- as.data.frame(meta_info$names)
+meta_info <- as.data.frame(meta_info[-(1:2),]) #if using a year, dimentions should be 1:3; if All_years, dimentions should be 1:3
+names(meta_info) <- c("L8_filename")
+
+#Get meta data from filename
+meta_info <- add_column(meta_info, Year = round(as.numeric(substr(meta_info$L8_filename,18,21)), 0), .after = 'L8_filename')
+meta_info <- add_column(meta_info, Month = sprintf("%02d", round(as.numeric(substr(meta_info$L8_filename, 22, 23)),0)), .after = 'Year')
+meta_info <- add_column(meta_info, Day = sprintf("%02d", round(as.numeric(substr(meta_info$L8_filename, 24, 25)), 0)), .after = 'Month')
+meta_info <- add_column(meta_info, Date = as.Date(paste0(meta_info$Day,"-", meta_info$Month, "-", meta_info$Year), "%d-%m-%Y"), .after = 'L8_filename')
+meta_info <- add_column(meta_info, DOY = format(meta_info$Date, "%j"), .after = 'Date')
+meta_info <- add_column(meta_info, YM = format(meta_info$Date, format="%Y-%m"), .after = 'DOY')
+meta_info$Date <- format(meta_info$Date, format="%m-%d-%Y")
+meta_info$DOY <- sprintf("%03d", as.numeric(meta_info$DOY))
+meta_info$Month <- sprintf("%02d", as.numeric(format(meta_info$Month, format="%m")))
+meta_info <- add_column(meta_info, Season = NaN, .after = 'YM')
+yq <- as.yearqtr(as.yearmon(meta_info$Date, "%m-%d-%Y") + 1/12)
+meta_info$Season <- factor(format(yq, "%q"), levels = 1:4, 
+                labels = c("Winter", "Spring", "Summer", "Fall"))
+
+#Join meta to extracted data
+site_ts <- data.frame(t(extract_sites[,4:(dim(extract_sites)[2])])); site_ts <- cbind(meta_info, site_ts)
+rand_ts <- data.frame(t(extract_random[,4:(dim(extract_random)[2])])); rand_ts <- cbind(meta_info, rand_ts)
+strat_ts <- data.frame(t(extract_stratified[,4:(dim(extract_stratified)[2])])); strat_ts <- cbind(meta_info, strat_ts)
+reg_ts <- data.frame(t(extract_regular[,4:(dim(extract_regular)[2])])); reg_ts <- cbind(meta_info, reg_ts)
+
+#Write time series dataframe to output directory
+write.csv(site_ts,paste0(L8_Tabs, 'site_ts.csv'), row.names = F)
+write.csv(rand_ts,paste0(L8_Tabs, 'random_ts.csv'), row.names = F)
+write.csv(strat_ts,paste0(L8_Tabs, 'stratified_ts.csv'), row.names = F)
+write.csv(reg_ts,paste0(L8_Tabs, 'regular_ts.csv'), row.names = F)
+
+```
+
+#compute time series stats
+```{r, include = F}
+#Site schema stats
+site_stats <- site_ts[,c(1:8)]
+site_stats$Mean <- apply(site_ts[,c(9: dim(site_ts)[2])], 1, mean, na.rm = TRUE)
+site_stats$Median <- apply(site_ts[,c(9: dim(site_ts)[2])], 1, median, na.rm = TRUE)
+site_stats$Sd <- apply(site_ts[,c(9: dim(site_ts)[2])], 1, sd, na.rm = TRUE)
+site_stats$Max <- apply(site_ts[,c(9: dim(site_ts)[2])], 1, max, na.rm = TRUE)
+site_stats$Min <- apply(site_ts[,c(9: dim(site_ts)[2])], 1, min, na.rm = TRUE)
+site_stats$Max[site_stats$Max == '-Inf']<-NaN
+site_stats$Min[site_stats$Min == 'Inf']<-NaN
+site_stats$Range <- abs(site_stats$Max - site_stats$Min)
+site_stats$Count <- rowSums(!is.na(site_ts[,c(9: dim(site_ts)[2])]))
+site_stats[is.na(site_stats)] <- NaN
+
+#Random sampling schema stats
+rand_stats <- rand_ts[,c(1:8)]
+rand_stats$Mean <- apply(rand_ts[,c(9: dim(rand_ts)[2])], 1, mean, na.rm = TRUE)
+rand_stats$Median <- apply(rand_ts[,c(9: dim(rand_ts)[2])], 1, median, na.rm = TRUE)
+rand_stats$Sd <- apply(rand_ts[,c(9: dim(rand_ts)[2])], 1, sd, na.rm = TRUE)
+rand_stats$Max <- apply(rand_ts[,c(9: dim(rand_ts)[2])], 1, max, na.rm = TRUE)
+rand_stats$Min <- apply(rand_ts[,c(9: dim(rand_ts)[2])], 1, min, na.rm = TRUE)
+rand_stats$Max[rand_stats$Max == '-Inf']<-NaN
+rand_stats$Min[rand_stats$Min == 'Inf']<-NaN
+rand_stats$Range <- abs(rand_stats$Max - rand_stats$Min)
+rand_stats$Count <- rowSums(!is.na(rand_ts[,c(9: dim(rand_ts)[2])]))
+rand_stats[is.na(rand_stats)] <- NaN
+
+#Stratified sampling schema stats
+strat_stats <- strat_ts[,c(1:8)]
+strat_stats$Mean <- apply(strat_ts[,c(9: dim(strat_ts)[2])], 1, mean, na.rm = TRUE)
+strat_stats$Median <- apply(strat_ts[,c(9: dim(strat_ts)[2])], 1, median, na.rm = TRUE)
+strat_stats$Sd <- apply(strat_ts[,c(9: dim(strat_ts)[2])], 1, sd, na.rm = TRUE)
+strat_stats$Max <- apply(strat_ts[,c(9: dim(strat_ts)[2])], 1, max, na.rm = TRUE)
+strat_stats$Min <- apply(strat_ts[,c(9: dim(strat_ts)[2])], 1, min, na.rm = TRUE)
+strat_stats$Max[strat_stats$Max == '-Inf']<-NaN
+strat_stats$Min[strat_stats$Min == 'Inf']<-NaN
+strat_stats$Range <- abs(strat_stats$Max - strat_stats$Min)
+strat_stats$Count <- rowSums(!is.na(strat_ts[,c(9: dim(strat_ts)[2])]))
+strat_stats[is.na(strat_stats)] <- NaN
+
+#Regular sampling schema stats
+reg_stats <- reg_ts[,c(1:8)]
+reg_stats$Mean <- apply(reg_ts[,c(9: dim(reg_ts)[2])], 1, mean, na.rm = TRUE)
+reg_stats$Median <- apply(reg_ts[,c(9: dim(reg_ts)[2])], 1, median, na.rm = TRUE)
+reg_stats$Sd <- apply(reg_ts[,c(9: dim(reg_ts)[2])], 1, FUN = function(x) sd(x, na.rm = TRUE))
+reg_stats$Max <- apply(reg_ts[,c(9: dim(reg_ts)[2])], 1, FUN = function(x) max(x, na.rm = TRUE))
+reg_stats$Min <- apply(reg_ts[,c(9: dim(reg_ts)[2])], 1, min, na.rm = TRUE)
+reg_stats$Max[reg_stats$Max == '-Inf']<-NaN
+reg_stats$Min[reg_stats$Min == 'Inf']<-NaN
+reg_stats$Range <- abs(reg_stats$Max - reg_stats$Min)
+reg_stats$Count <- rowSums(!is.na(reg_ts[,c(9: dim(reg_ts)[2])]))
+reg_stats[is.na(reg_stats)] <- NaN
+
+#Write time series dataframe to output directory
+write.csv(site_stats,paste0(L8_Tabs, 'site_stats.csv'), row.names = F)
+write.csv(rand_stats,paste0(L8_Tabs, 'random_stats.csv'), row.names = F)
+write.csv(strat_stats,paste0(L8_Tabs, 'stratified_stats.csv'), row.names = F)
+write.csv(reg_stats,paste0(L8_Tabs, 'regular_stats.csv'), row.names = F)
+
+```

@@ -1,0 +1,286 @@
+---
+title: "Extract_coords"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+Out_map <- paste0(filepath, "Code/R/Create_sampling_schema/SHPs/")
+Out_tab <- paste0(filepath, "Code/R/Create_sampling_schema/Tables/")
+Out_fig <- paste0(filepath, "Outputs/Merged/Figures/PDF/Distribution/")
+
+year = paste0(seq(2013, 2021, 1), "/") #change for target year
+L8_Folder <- paste0(filepath, "Inputs/L8/L3_images/Resampled/L8_", year)
+L8_Out_rast <- paste0(filepath, "Outputs/L8/Raster_stats/", year)
+L8_Out_tabs <- paste0(filepath, "Outputs/L8/Tables/", year)
+
+#Read in water AOI
+L81 <- lapply(list.files(L8_Folder[[1]], full.names = TRUE, pattern = '*_resampled.tif'),raster)
+L81 <- L81[[1]]
+SARP <- spTransform(readOGR(paste0(filepath, 'Inputs/AOI/Water.shp'), verbose = F), crs(L81))
+Sites <- spTransform(readOGR(paste0(filepath, 'Inputs/AOI/Site_locations.shp'), verbose = F), crs(L81))
+
+#Plot area of interest and sample site locations
+plot(SARP, col = 'lightblue', main = 'Area of Interest - Water', cex.main = 0.75); plot(Sites, pch = 21, cex = 0.75, col = 'black', bg = 'red', add = T); legend(422000,4109000, legend = c("Sampling Site Locations"), col = 'black', pt.bg = 'red', pch = 21, cex = 0.4, pt.cex = 0.75)
+
+```
+
+#Extract Coordinates for All Sampling Schema
+```{r}
+#Extract sample sites coordinates
+Sites_gcs <- spTransform(Sites, crs(SARP))
+coords_sites <- coordinates(Sites_gcs)
+sites_df <- SpatialPointsDataFrame(Sites_gcs, data.frame(a = 1:nrow(coords_sites)))
+
+extract_sites <- as.data.frame(coordinates(sites_df))
+names(extract_sites) <- c("Longitude", "Latitude")
+
+#Write spatial analysis dataframe to output folder
+write.csv(extract_sites,paste0(Out_tab, 'site_coords.csv'), row.names = F)
+
+#write SPDF to output folder
+writeOGR(obj=sites_df, dsn=paste0(Out_map, "/sites_pts.shp"), layer="sites_df", driver="ESRI Shapefile")
+```
+
+```{r}
+library(spatstat)
+library(maptools)
+
+#List and read files
+for(y in 1:length(year)){
+  L8_all <- list.files(L8_Folder[[y]], full.names = TRUE, pattern = '*_resampled.tif')
+  L8_rasters <- lapply(L8_all,raster)
+  
+  #Crop raster list to shapefile
+  L8_crop <- c()
+  for(i in 1:length(L8_rasters)){
+    crop <-  crop(L8_rasters[[i]],SARP)
+    L8_crop <- append(L8_crop,crop)
+  }
+  
+  #Reclassify values that are less than 0 and greater than 7 to NaN
+  L8_reclass <- c()
+  for (i in 1:length(L8_crop)){
+    m <- L8_crop[[i]]
+    m[m>7]<-NaN
+    m[m<=0] <- NaN
+    L8_reclass <- append(L8_reclass, m)
+  }
+  
+  L8_stack <- stack(L8_reclass)
+
+  #Clear out variables 
+  rm(L8_crop)
+  rm(L8_reclass)
+  rm(m)
+  
+  coord_folder <- paste0(filepath, "Code/R/Create_sampling_schema/SHPs/")
+
+  #Extract sites timeseries by taking the mean of center cell
+  sites_30 <- spTransform(readOGR(paste0(coord_folder, 'sites_pts.shp'), verbose = F), crs(L81))
+  coords_30 <- coordinates(sites_30)
+  extract_30 <- cbind(coords_30, as.data.frame(cbind(sites_30, raster::extract(L8_stack, sites_30, 
+                                                                               fun = mean))))
+  extract_30 = extract_30[,!(names(extract_30) %in% c("a"))]
+  names(extract_30)[names(extract_30) == 'coords.x1'] <- 'Longitude'
+  names(extract_30)[names(extract_30) == 'coords.x2'] <- 'Latitude'
+  n_30<-dim(extract_30)[2];extract_30<-extract_30[, 1:(n_30-2)]
+  
+  #Extract sites timeseries by taking the mean of 90m buffer
+  sites_90 <- spTransform(readOGR(paste0(coord_folder, 'sites_pts.shp'), verbose = F), crs(L81))
+  coords_90 <- coordinates(sites_90)
+  
+  sites_90 <- as.ppp.SpatialPointsDataFrame(sites_90)
+  
+  output <- c()
+  for (r in 1:nlayers(L8_stack)){
+    rim <- as.im.RasterLayer(L8_stack[[r]])
+    Box <- owin(c(-1.5,1.5) * rim$xstep, c(-1.5,1.5) * rim$ystep)
+  
+    imlist <- solapply(seq_len(npoints(sites_90)),
+                     function(i) rim[shift(Box, sites_90[i])])
+  
+    rasterList <- lapply(imlist, as, Class = "RasterLayer")
+    mean.stats<- lapply(rasterList, cellStats, "mean")
+    output <- append(output, list(do.call(rbind,mean.stats)))
+  
+  }
+  
+  extract_90 <- as.data.frame(output)
+  names(extract_90) <- names(L8_stack)
+  extract_90 <- cbind(coords_90, extract_90)
+  names(extract_90)[names(extract_90) == 'coords.x1'] <- 'Longitude'
+  names(extract_90)[names(extract_90) == 'coords.x2'] <- 'Latitude'
+  
+  write.csv(extract_30, paste0(filepath, "Outputs/L8/Tables/Spatial_agg/L8_", 
+                               substr(year[[y]],1, nchar(year[[y]])-1), "_30m.csv"), row.names = F)
+  write.csv(extract_90, paste0(filepath, "Outputs/L8/Tables/Spatial_agg/L8_", 
+                               substr(year[[y]],1, nchar(year[[y]])-1), "_90m.csv"), row.names = F)
+  
+}
+
+
+
+
+
+```
+
+
+```{r}
+
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+
+
+#Create directories
+sensor = "S2B" #change for target sensor
+year = paste0(seq(2017, 2021, 1), "/") #change for target year
+
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+S2_Folder <- paste0(filepath, "Inputs/S2/", sensor, "/L3_images/Reprojected/", year)
+S2_Out_rast <- paste0(filepath, "Outputs/S2/Raster_stats/", sensor, "/", year)
+S2_Out_tabs <- paste0(filepath, "Outputs/S2/Tables/", sensor, "/", year)
+
+#Read in water AOI
+S21 <- lapply(list.files(S2_Folder[[1]], full.names = TRUE, pattern = '*_reproj.tif'),raster)
+S21 <- S21[[1]]
+SARP <- spTransform(readOGR(paste0(filepath, 'Inputs/AOI/Water.shp'), verbose = F), crs(S21))
+Sites <- spTransform(readOGR(paste0(filepath, 'Inputs/AOI/Site_locations.shp'), verbose = F), crs(S21))
+
+```
+
+
+#Extract
+```{r}
+library(spatstat)
+library(maptools)
+
+#List and read files
+for(y in 1:length(year)){
+  
+  paste0("start", substr(year[[y]],1, nchar(year[[y]])-1))
+  
+  #List and read files
+  S2_all <- list.files(S2_Folder[[y]], full.names = TRUE, pattern = '*_reproj.tif')
+  S2_rasters <- lapply(S2_all,raster)
+
+  ## Crop raster list to shapefile
+  S2_crop <- c()
+  for(i in 1:length(S2_rasters)){
+    crop <-  crop(S2_rasters[[i]],SARP)
+    S2_crop <- append(S2_crop,crop)
+  }
+  
+  #Reclassify values that are less than 0 and greater than 7 to NaN
+  S2_reclass <- c()
+  for (i in 1:length(S2_crop)){
+    m <- S2_crop[[i]]
+    m[m>7]<-NaN
+    m[m<=0] <- NaN
+    S2_reclass <- append(S2_reclass, m)
+  }
+  
+  S2_stack <- stack(S2_reclass)
+  
+  #Clear out variables 
+  rm(S2_crop)
+  rm(S2_reclass)
+  rm(m)
+
+  coord_folder <- paste0(filepath, "Code/R/Create_sampling_schema/SHPs/")
+  
+  #Extract sites timeseries by taking the mean of center cell
+  sites_10 <- spTransform(readOGR(paste0(coord_folder, 'sites_pts.shp'), verbose = F), crs(S21))
+  coords_10 <- coordinates(sites_10)
+  extract_10 <- cbind(coords_10, as.data.frame(cbind(sites_10, raster::extract(S2_stack, sites_10, 
+                                                                               fun = mean))))
+  extract_10 = extract_10[,!(names(extract_10) %in% c("a"))]
+  names(extract_10)[names(extract_10) == 'coords.x1'] <- 'Longitude'
+  names(extract_10)[names(extract_10) == 'coords.x2'] <- 'Latitude'
+  n_10<-dim(extract_10)[2];extract_10<-extract_10[, 1:(n_10-2)]
+  
+  #Extract sites timeseries by taking the mean of 30m buffer
+  sites_30 <- spTransform(readOGR(paste0(coord_folder, 'sites_pts.shp'), verbose = F), crs(S21))
+  coords_30 <- coordinates(sites_30)
+  
+  sites_30 <- as.ppp.SpatialPointsDataFrame(sites_30)
+  
+  output <- c()
+  for (r in 1:nlayers(S2_stack)){
+    rim <- as.im.RasterLayer(S2_stack[[r]])
+    Box <- owin(c(-1.5,1.5) * rim$xstep, c(-1.5,1.5) * rim$ystep)
+  
+    imlist <- solapply(seq_len(npoints(sites_30)),
+                     function(i) rim[shift(Box, sites_30[i])])
+  
+    rasterList <- lapply(imlist, as, Class = "RasterLayer")
+    mean.stats<- lapply(rasterList, cellStats, "mean")
+    output <- append(output, list(do.call(rbind,mean.stats)))
+  
+  }
+  
+  extract_30 <- as.data.frame(output)
+  names(extract_30) <- names(S2_stack)
+  extract_30 <- cbind(coords_30, extract_30)
+  names(extract_30)[names(extract_30) == 'coords.x1'] <- 'Longitude'
+  names(extract_30)[names(extract_30) == 'coords.x2'] <- 'Latitude'
+  
+  #Extract sites timeseries by taking the mean of 90m buffer
+  sites_90 <- spTransform(readOGR(paste0(coord_folder, 'sites_pts.shp'), verbose = F), crs(S21))
+  coords_90 <- coordinates(sites_90)
+  
+  sites_90 <- as.ppp.SpatialPointsDataFrame(sites_90)
+  
+  output <- c()
+  for (r in 1:nlayers(S2_stack)){
+    rim <- as.im.RasterLayer(S2_stack[[r]])
+    Box <- owin(c(-4.5,4.5) * rim$xstep, c(-4.5,4.5) * rim$ystep)
+  
+    imlist <- solapply(seq_len(npoints(sites_90)),
+                     function(i) rim[shift(Box, sites_90[i])])
+  
+    rasterList <- lapply(imlist, as, Class = "RasterLayer")
+    mean.stats<- lapply(rasterList, cellStats, "mean")
+    output <- append(output, list(do.call(rbind,mean.stats)))
+  
+  }
+  
+  extract_90 <- as.data.frame(output)
+  names(extract_90) <- names(S2_stack)
+  extract_90 <- cbind(coords_90, extract_90)
+  names(extract_90)[names(extract_90) == 'coords.x1'] <- 'Longitude'
+  names(extract_90)[names(extract_90) == 'coords.x2'] <- 'Latitude'
+  
+  #write to csv
+  
+  write.csv(extract_10, paste0(filepath, "Outputs/S2/Tables/", sensor, "/Spatial_agg/", sensor, "_", 
+                               substr(year[[y]],1, nchar(year[[y]])-1), "_10m.csv"), row.names = F)
+  write.csv(extract_30, paste0(filepath, "Outputs/S2/Tables/", sensor, "/Spatial_agg/", sensor, "_", 
+                               substr(year[[y]],1, nchar(year[[y]])-1), "_30m.csv"), row.names = F)
+  write.csv(extract_90, paste0(filepath, "Outputs/S2/Tables/", sensor, "/Spatial_agg/", sensor, "_", 
+                               substr(year[[y]],1, nchar(year[[y]])-1), "_90m.csv"), row.names = F)
+  
+  paste0("end", substr(year[[y]],1, nchar(year[[y]])-1))
+
+}
+
+```
+
+```{r}
+L8_stats_files <- dir(paste0(filepath, "Outputs/L8/Tables/Spatial_agg/"), pattern = "*.csv")
+S2A_stats_files <- dir(paste0(filepath, "Outputs/S2/Tables/S2A/Spatial_agg/"), pattern = "*.csv")
+
+```

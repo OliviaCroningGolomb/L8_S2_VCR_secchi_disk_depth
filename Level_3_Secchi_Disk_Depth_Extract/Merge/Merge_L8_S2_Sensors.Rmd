@@ -1,0 +1,122 @@
+---
+title: "Merge_L8_S2_Sensors"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r setup, include=FALSE}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+year = "2021/"
+
+L8_rast <- paste0(filepath, "Outputs/L8/Raster_stats/", year)
+S2_rast <- paste0(filepath, "Outputs/S2/Raster_stats/S2/", year)
+
+L8_tabs <- paste0(filepath, "Outputs/L8/Tables/", year)
+S2_tabs <- paste0(filepath, "Outputs/S2/Tables/S2/", year)
+
+out_rast <- paste0(filepath, "Outputs/Merged/Raster_stats/", year)
+out_tab <- paste0(filepath, "Outputs/Merged/Tables/", year)
+
+```
+
+#Read in rasters
+```{r}
+L8_count <- raster(paste0(L8_rast, "L8_count.tif"))
+L8_mean <- raster(paste0(L8_rast, "L8_mean.tif"))
+L8_median <- raster(paste0(L8_rast, "L8_median.tif"))
+L8_min <- raster(paste0(L8_rast, "L8_min.tif"))
+L8_max <- raster(paste0(L8_rast, "L8_max.tif"))
+L8_range <- raster(paste0(L8_rast, "L8_range.tif"))
+L8_stdv <- raster(paste0(L8_rast, "L8_stdv.tif"))
+
+S2_count <- raster(paste0(S2_rast, "S2_count.tif"))
+S2_mean <- raster(paste0(S2_rast, "S2_mean.tif"))
+S2_median <- raster(paste0(S2_rast, "S2_median.tif"))
+S2_min <- raster(paste0(S2_rast, "S2_min.tif"))
+S2_max <- raster(paste0(S2_rast, "S2_max.tif"))
+S2_range <- raster(paste0(S2_rast, "S2_range.tif"))
+S2_stdv <- raster(paste0(S2_rast, "S2_stdv.tif"))
+
+```
+
+#Resample S2 raster
+```{r}
+S2_resample_count <- resample(S2_count,L8_count, "bilinear")
+S2_resample_mean <- resample(S2_mean,L8_mean, "bilinear")
+S2_resample_median <- resample(S2_median,L8_median, "bilinear")
+S2_resample_max <- resample(S2_max,L8_max, "bilinear")
+S2_resample_min <- resample(S2_min,L8_min, "bilinear")
+S2_resample_range <- resample(S2_range,L8_range, "bilinear")
+S2_resample_stdv <- resample(S2_stdv,L8_stdv, "bilinear")
+
+#stack rasters
+Count <- stack(L8_count, S2_resample_count)
+Mean <- stack(L8_mean, S2_resample_mean)
+Median <- stack(L8_median, S2_resample_median)
+Max <- stack(L8_max, S2_resample_max)
+Min <- stack(L8_min, S2_resample_min)
+Range <- stack(L8_range, S2_resample_range)
+Stdv <- stack(L8_stdv, S2_resample_stdv)
+
+#merge rasters
+Count_rast <- stackApply(Count, indices =  rep(1,nlayers(Count)), fun = "sum", na.rm = T)
+Mean_rast <- stackApply(Mean, indices =  rep(1,nlayers(Mean)), fun = "mean", na.rm = T)
+Median_rast <- stackApply(Median, indices =  rep(1,nlayers(Median)), fun = "mean", na.rm = T)
+Max_rast <- stackApply(Max, indices =  rep(1,nlayers(Max)), fun = "max", na.rm = T)
+Min_rast <- stackApply(Min, indices =  rep(1,nlayers(Min)), fun = "min", na.rm = T)
+Range_rast <- stackApply(Range, indices =  rep(1,nlayers(Range)), fun = "mean", na.rm = T)
+Stdv_rast <- stackApply(Stdv, indices =  rep(1,nlayers(Stdv)), fun = "mean", na.rm = T)
+
+#write rasters to output directory
+writeRaster(Mean_rast, paste0(out_rast, "Mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(Count_rast, paste0(out_rast, "Count.tif"), format = "GTiff", overwrite = T)
+writeRaster(Max_rast, paste0(out_rast, "Max.tif"), format = "GTiff", overwrite = T)
+writeRaster(Min_rast, paste0(out_rast, "Min.tif"), format = "GTiff", overwrite = T)
+writeRaster(Range_rast, paste0(out_rast, "Range.tif"), format = "GTiff", overwrite = T)
+writeRaster(Stdv_rast, paste0(out_rast, "Stdv.tif"), format = "GTiff", overwrite = T)
+writeRaster(Median_rast, paste0(out_rast, "Median.tif"), format = "GTiff", overwrite = T)
+
+```
+
+#Read in tables
+```{r}
+#L8
+L8_random <- read.csv(paste0(L8_tabs, "random_sa.csv"))
+L8_regular <- read.csv(paste0(L8_tabs, "regular_sa.csv"))
+L8_strat <- read.csv(paste0(L8_tabs, "stratified_sa.csv"))
+L8_site <- read.csv(paste0(L8_tabs, "site_sa.csv"))
+
+#S2
+S2_random <- read.csv(paste0(S2_tabs, "random_sa.csv"))
+S2_regular <- read.csv(paste0(S2_tabs, "regular_sa.csv"))
+S2_strat <- read.csv(paste0(S2_tabs, "strat_sa.csv"))
+S2_site <- read.csv(paste0(S2_tabs, "site_sa.csv"))
+
+```
+
+#Merge Tables
+```{r}
+Random_list <- list(L8_random, S2_random)
+Regular_list <- list(L8_regular, S2_regular)
+Strat_list <- list(L8_strat, S2_strat)
+Site_list <- list(L8_site, S2_site)
+
+Random_tab <- Random_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+Regular_tab <- Regular_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+Site_tab <- Site_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+Strat_tab <- Strat_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+write.csv(Random_tab, paste0(out_tab, "random_sa.csv"), row.names = F)
+write.csv(Regular_tab, paste0(out_tab, "regular_sa.csv"), row.names = F)
+write.csv(Strat_tab, paste0(out_tab, "strat_sa.csv"), row.names = F)
+write.csv(Site_tab, paste0(out_tab, "site_sa.csv"), row.names = F)
+
+```

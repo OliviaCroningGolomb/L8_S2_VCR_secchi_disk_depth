@@ -1,0 +1,215 @@
+---
+title: "Merge_Years"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r setup, include=FALSE}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+
+Rasters <- paste0(filepath, "Outputs/Merged/Raster_stats/")
+Tables <- paste0(filepath, "Outputs/Merged/Tables/")
+
+out_rast <- paste0(filepath, "Outputs/Merged/Raster_stats/Year_avg/")
+out_tab <- paste0(filepath, "Outputs/Merged/Tables/All_years/")
+
+```
+
+#Read in rasters
+```{r}
+count_2021 <- raster(paste0(Rasters, "2021/Count.tif"))
+mean_2021 <- raster(paste0(Rasters, "2021/Mean.tif"))
+median_2021 <- raster(paste0(Rasters, "2021/Median.tif"))
+min_2021 <- raster(paste0(Rasters, "2021/Min.tif"))
+max_2021 <- raster(paste0(Rasters, "2021/Max.tif"))
+range_2021 <- raster(paste0(Rasters, "2021/Range.tif"))
+stdv_2021 <- raster(paste0(Rasters, "2021/Stdv.tif"))
+
+count_2020 <- raster(paste0(Rasters, "2020/Count.tif"))
+mean_2020 <- raster(paste0(Rasters, "2020/Mean.tif"))
+median_2020 <- raster(paste0(Rasters, "2020/Median.tif"))
+min_2020 <- raster(paste0(Rasters, "2020/Min.tif"))
+max_2020 <- raster(paste0(Rasters, "2020/Max.tif"))
+range_2020 <- raster(paste0(Rasters, "2020/Range.tif"))
+stdv_2020 <- raster(paste0(Rasters, "2020/Stdv.tif"))
+
+count_2019 <- raster(paste0(Rasters, "2019/Count.tif"))
+mean_2019 <- raster(paste0(Rasters, "2019/Mean.tif"))
+median_2019 <- raster(paste0(Rasters, "2019/Median.tif"))
+min_2019 <- raster(paste0(Rasters, "2019/Min.tif"))
+max_2019 <- raster(paste0(Rasters, "2019/Max.tif"))
+range_2019 <- raster(paste0(Rasters, "2019/Range.tif"))
+stdv_2019 <- raster(paste0(Rasters, "2019/Stdv.tif"))
+
+count_2018 <- raster(paste0(Rasters, "2018/Count.tif"))
+mean_2018 <- raster(paste0(Rasters, "2018/Mean.tif"))
+median_2018 <- raster(paste0(Rasters, "2018/Median.tif"))
+min_2018 <- raster(paste0(Rasters, "2018/Min.tif"))
+max_2018 <- raster(paste0(Rasters, "2018/Max.tif"))
+range_2018 <- raster(paste0(Rasters, "2018/Range.tif"))
+stdv_2018 <- raster(paste0(Rasters, "2018/Stdv.tif"))
+
+count_2017 <- raster(paste0(Rasters, "2017/Count.tif"))
+mean_2017 <- raster(paste0(Rasters, "2017/Mean.tif"))
+median_2017 <- raster(paste0(Rasters, "2017/Median.tif"))
+min_2017 <- raster(paste0(Rasters, "2017/Min.tif"))
+max_2017 <- raster(paste0(Rasters, "2017/Max.tif"))
+range_2017 <- raster(paste0(Rasters, "2017/Range.tif"))
+stdv_2017 <- raster(paste0(Rasters, "2017/Stdv.tif"))
+
+count_2016 <- raster(paste0(Rasters, "2016/Count.tif"))
+mean_2016 <- raster(paste0(Rasters, "2016/Mean.tif"))
+median_2016 <- raster(paste0(Rasters, "2016/Median.tif"))
+min_2016 <- raster(paste0(Rasters, "2016/Min.tif"))
+max_2016 <- raster(paste0(Rasters, "2016/Max.tif"))
+range_2016 <- raster(paste0(Rasters, "2016/Range.tif"))
+stdv_2016 <- raster(paste0(Rasters, "2016/Stdv.tif"))
+
+count_2015 <- raster(paste0(Rasters, "2015/Count.tif"))
+mean_2015 <- raster(paste0(Rasters, "2015/Mean.tif"))
+median_2015 <- raster(paste0(Rasters, "2015/Median.tif"))
+min_2015 <- raster(paste0(Rasters, "2015/Min.tif"))
+max_2015 <- raster(paste0(Rasters, "2015/Max.tif"))
+range_2015 <- raster(paste0(Rasters, "2015/Range.tif"))
+stdv_2015 <- raster(paste0(Rasters, "2015/Stdv.tif"))
+
+count_2014 <- raster(paste0(Rasters, "2014/Count.tif"))
+mean_2014 <- raster(paste0(Rasters, "2014/Mean.tif"))
+median_2014 <- raster(paste0(Rasters, "2014/Median.tif"))
+min_2014 <- raster(paste0(Rasters, "2014/Min.tif"))
+max_2014 <- raster(paste0(Rasters, "2014/Max.tif"))
+range_2014 <- raster(paste0(Rasters, "2014/Range.tif"))
+stdv_2014 <- raster(paste0(Rasters, "2014/Stdv.tif"))
+
+count_2013 <- raster(paste0(Rasters, "2013/Count.tif"))
+mean_2013 <- raster(paste0(Rasters, "2013/Mean.tif"))
+median_2013 <- raster(paste0(Rasters, "2013/Median.tif"))
+min_2013 <- raster(paste0(Rasters, "2013/Min.tif"))
+max_2013 <- raster(paste0(Rasters, "2013/Max.tif"))
+range_2013 <- raster(paste0(Rasters, "2013/Range.tif"))
+stdv_2013 <- raster(paste0(Rasters, "2013/Stdv.tif"))
+
+```
+
+#Stack rasters
+```{r}
+Count <- stack(count_2021, count_2020, count_2019, count_2018, count_2017, count_2016, count_2015, count_2014, count_2013)
+
+Mean <- stack(mean_2021, mean_2020, mean_2019, mean_2018, mean_2017, mean_2016, mean_2015, mean_2014, mean_2013)
+
+Median <- stack(median_2021, median_2020, median_2019, median_2018, median_2017, median_2016, median_2015, median_2014, median_2013)
+
+Min <- stack(min_2021, min_2020, min_2019, min_2018, min_2017, min_2016, min_2015, min_2014, min_2013)
+
+Max <- stack(max_2021, max_2020, max_2019, max_2018, max_2017, max_2016, max_2015, max_2014, max_2013)
+
+Range <- stack(range_2021, range_2020, range_2019, range_2018, range_2017, range_2016, range_2015, range_2014, range_2013)
+
+Stdv <- stack(stdv_2021, stdv_2020, stdv_2019, stdv_2018, stdv_2017, stdv_2016, stdv_2015, stdv_2014, stdv_2013)
+
+```
+
+#Merge rasters
+```{r}
+Count_rast <- stackApply(Count, indices =  rep(1,nlayers(Count)), fun = "sum", na.rm = T)
+Mean_rast <- stackApply(Mean, indices =  rep(1,nlayers(Mean)), fun = "mean", na.rm = T)
+Median_rast <- stackApply(Median, indices =  rep(1,nlayers(Median)), fun = "mean", na.rm = T)
+Max_rast <- stackApply(Max, indices =  rep(1,nlayers(Max)), fun = "max", na.rm = T)
+Min_rast <- stackApply(Min, indices =  rep(1,nlayers(Min)), fun = "min", na.rm = T)
+Range_rast <- stackApply(Range, indices =  rep(1,nlayers(Range)), fun = "mean", na.rm = T)
+Stdv_rast <- stackApply(Stdv, indices =  rep(1,nlayers(Stdv)), fun = "mean", na.rm = T)
+
+```
+
+#Write rasters
+```{r}
+#write rasters to output directory
+writeRaster(Mean_rast, paste0(out_rast, "Mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(Count_rast, paste0(out_rast, "Count.tif"), format = "GTiff", overwrite = T)
+writeRaster(Max_rast, paste0(out_rast, "Max.tif"), format = "GTiff", overwrite = T)
+writeRaster(Min_rast, paste0(out_rast, "Min.tif"), format = "GTiff", overwrite = T)
+writeRaster(Range_rast, paste0(out_rast, "Range.tif"), format = "GTiff", overwrite = T)
+writeRaster(Stdv_rast, paste0(out_rast, "Stdv.tif"), format = "GTiff", overwrite = T)
+writeRaster(Median_rast, paste0(out_rast, "Median.tif"), format = "GTiff", overwrite = T)
+
+```
+
+#Read in tables 
+```{r}
+random_2021 <- read.csv(paste0(Tables, "2021/random_sa.csv"))
+regular_2021 <- read.csv(paste0(Tables, "2021/regular_sa.csv"))
+strat_2021 <- read.csv(paste0(Tables, "2021/strat_sa.csv"))
+site_2021 <- read.csv(paste0(Tables, "2021/site_sa.csv"))
+
+random_2020 <- read.csv(paste0(Tables, "2020/random_sa.csv"))
+regular_2020 <- read.csv(paste0(Tables, "2020/regular_sa.csv"))
+strat_2020 <- read.csv(paste0(Tables, "2020/strat_sa.csv"))
+site_2020 <- read.csv(paste0(Tables, "2020/site_sa.csv"))
+
+random_2019 <- read.csv(paste0(Tables, "2019/random_sa.csv"))
+regular_2019 <- read.csv(paste0(Tables, "2019/regular_sa.csv"))
+strat_2019 <- read.csv(paste0(Tables, "2019/strat_sa.csv"))
+site_2019 <- read.csv(paste0(Tables, "2019/site_sa.csv"))
+
+random_2018 <- read.csv(paste0(Tables, "2018/random_sa.csv"))
+regular_2018 <- read.csv(paste0(Tables, "2018/regular_sa.csv"))
+strat_2018 <- read.csv(paste0(Tables, "2018/strat_sa.csv"))
+site_2018 <- read.csv(paste0(Tables, "2018/site_sa.csv"))
+
+random_2017 <- read.csv(paste0(Tables, "2017/random_sa.csv"))
+regular_2017 <- read.csv(paste0(Tables, "2017/regular_sa.csv"))
+strat_2017 <- read.csv(paste0(Tables, "2017/strat_sa.csv"))
+site_2017 <- read.csv(paste0(Tables, "2017/site_sa.csv"))
+
+random_2016 <- read.csv(paste0(Tables, "2016/random_sa.csv"))
+regular_2016 <- read.csv(paste0(Tables, "2016/regular_sa.csv"))
+strat_2016 <- read.csv(paste0(Tables, "2016/strat_sa.csv"))
+site_2016 <- read.csv(paste0(Tables, "2016/site_sa.csv"))
+
+random_2015 <- read.csv(paste0(Tables, "2015/random_sa.csv"))
+regular_2015 <- read.csv(paste0(Tables, "2015/regular_sa.csv"))
+strat_2015 <- read.csv(paste0(Tables, "2015/strat_sa.csv"))
+site_2015 <- read.csv(paste0(Tables, "2015/site_sa.csv"))
+
+random_2014 <- read.csv(paste0(Tables, "2014/random_sa.csv"))
+regular_2014 <- read.csv(paste0(Tables, "2014/regular_sa.csv"))
+strat_2014 <- read.csv(paste0(Tables, "2014/strat_sa.csv"))
+site_2014 <- read.csv(paste0(Tables, "2014/site_sa.csv"))
+
+random_2013 <- read.csv(paste0(Tables, "2013/random_sa.csv"))
+regular_2013 <- read.csv(paste0(Tables, "2013/regular_sa.csv"))
+strat_2013 <- read.csv(paste0(Tables, "2013/strat_sa.csv"))
+site_2013 <- read.csv(paste0(Tables, "2013/site_sa.csv"))
+
+```
+
+#Merge tables
+```{r}
+Random_list <- list(random_2021, random_2020, random_2019, random_2018, random_2017, random_2016, random_2015, random_2014, random_2013)
+
+Regular_list <- list(regular_2021, regular_2020, regular_2019, regular_2018, regular_2017, regular_2016, regular_2015, regular_2014, regular_2013)
+
+Strat_list <- list(strat_2021, strat_2020, strat_2019, strat_2018, strat_2017, strat_2016, strat_2015, strat_2014, strat_2013)
+
+Site_list <- list(site_2021, site_2020, site_2019, site_2018, site_2017, site_2016, site_2015, site_2014, site_2013)
+
+Random_tab <- Random_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+Regular_tab <- Regular_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+Site_tab <- Site_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+Strat_tab <- Strat_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+#write tables to output directory
+write.csv(Random_tab, paste0(out_tab, "random_sa.csv"), row.names = F)
+write.csv(Regular_tab, paste0(out_tab, "regular_sa.csv"), row.names = F)
+write.csv(Strat_tab, paste0(out_tab, "strat_sa.csv"), row.names = F)
+write.csv(Site_tab, paste0(out_tab, "site_sa.csv"), row.names = F)
+
+```

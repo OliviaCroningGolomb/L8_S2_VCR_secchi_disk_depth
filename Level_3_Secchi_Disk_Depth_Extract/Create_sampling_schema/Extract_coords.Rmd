@@ -1,0 +1,94 @@
+---
+title: "Extract_coords"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+crs_raster <- raster(paste0(filepath, "Inputs/AOI/L8_extent.tif"))
+Out_map <- paste0(filepath, "Code/R/Create_sampling_schema/SHPs/")
+Out_tab <- paste0(filepath, "Code/R/Create_sampling_schema/Tables/")
+Out_fig <- paste0(filepath, "Outputs/Merged/Figures/PDF/Distribution/")
+
+#Read in water AOI
+SARP <- spTransform(readOGR(paste0(filepath,'Inputs/AOI/Water.shp'), verbose = F), crs(crs_raster))
+Sites <- spTransform(readOGR(paste0(filepath,'Inputs/AOI/Site_locations.shp'), verbose = F), crs(crs_raster))
+
+#Plot area of interest and sample site locations
+plot(SARP, col = 'lightblue', main = 'Area of Interest - Water', cex.main = 0.75, line = 0.25); plot(Sites, pch = 21, cex = 0.75, col = 'black', bg = 'red', add = T); legend(422000,4109000, legend = c("Sampling Site Locations"), col = 'black', pt.bg = 'red', pch = 21, cex = 0.4, pt.cex = 0.75)
+
+```
+
+#Extract Coordinates for All Sampling Schema
+```{r}
+#Set number of samples
+nsamples = 1000 
+
+#Extract sample sites coordinates
+Sites_gcs <- spTransform(Sites, crs(SARP))
+coords_sites <- coordinates(Sites_gcs)
+sites_df <- SpatialPointsDataFrame(Sites_gcs, data.frame(a = 1:nrow(coords_sites)))
+
+extract_sites <- as.data.frame(coordinates(sites_df))
+names(extract_sites) <- c("Longitude", "Latitude")
+
+#Extract random points coordinates
+random <- spsample(SARP, nsamples, type = 'random')
+coords_random <- coordinates(random)
+random_df <- SpatialPointsDataFrame(random, data.frame(a = 1:nrow(coords_random)))
+
+extract_random <- as.data.frame(coordinates(random_df))
+names(extract_random) <- c("Longitude", "Latitude")
+
+#Extract stratified points coordinates
+stratified <- spsample(SARP, nsamples, type = 'stratified')
+coords_stratified <- coordinates(stratified)
+stratified_df <- SpatialPointsDataFrame(stratified, data.frame(a = 1:nrow(coords_stratified)))
+
+extract_stratified <- as.data.frame(coordinates(stratified_df))
+names(extract_stratified) <- c("Longitude", "Latitude")
+
+#Extract regular points coordinates
+regular <- spsample(SARP, nsamples, type = 'regular')
+coords_regular <- coordinates(regular)
+regular_df <- SpatialPointsDataFrame(regular, data.frame(a = 1:nrow(coords_regular)))
+extract_regular <- SpatialPointsDataFrame(regular, data.frame(a = 1:nrow(coords_regular)))
+
+extract_regular <- as.data.frame(coordinates(regular_df))
+names(extract_regular) <- c("Longitude", "Latitude")
+
+#Write spatial analysis dataframe to output folder
+write.csv(extract_sites,paste0(Out_tab, 'site_coords.csv'), row.names = F)
+write.csv(extract_random,paste0(Out_tab, 'random_coords.csv'), row.names = F)
+write.csv(extract_stratified,paste0(Out_tab, 'stratified_coords.csv'), row.names = F)
+write.csv(extract_regular,paste0(Out_tab, 'regular_coords.csv'), row.names = F)
+
+#write SPDF to output folder
+writeOGR(obj=sites_df, dsn=paste0(Out_map, "/sites_pts.shp"), layer="sites_df", driver="ESRI Shapefile")
+writeOGR(obj=random_df, dsn=paste0(Out_map, "/random_pts.shp"), layer="random_df", driver="ESRI Shapefile")
+writeOGR(obj=stratified_df, dsn=paste0(Out_map, "/stratified_pts.shp"), layer="stratified_df", driver="ESRI Shapefile")
+writeOGR(obj=regular_df, dsn=paste0(Out_map, "/regular_pts.shp"), layer="regular_df", driver="ESRI Shapefile")
+
+```
+
+#Map Sampling Schema
+```{r}
+pdf(paste0(Out_fig, "sampling_schema.pdf") ,onefile=FALSE,width=12, height = 14, useDingbats=FALSE)
+par(mfrow= c(2,2),mai=c(0.65,0,0.65,0),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1,0), pty = 'm')
+extent <- extent(SARP)
+
+plot(SARP, col = 'lightskyblue', lwd = 2); plot(Sites_gcs, pch = 20, col = 'red', add = T);title("Site Sampling", line = 0, cex.main = 2); plot(extent, col = 'black', add = T, lwd = 2)
+plot(SARP, col = 'lightskyblue', lwd = 2); plot(random, pch = '.', col = 'red', add = T);title("Random Sampling", line = 0, cex.main = 2); plot(extent, col = 'black', add = T, lwd = 2)
+plot(SARP, col = 'lightskyblue', lwd = 2); plot(stratified, pch = '.', col = 'red', add = T);title("Stratified Random \nSampling", line = 0, cex.main = 2); plot(extent, col = 'black', add = T, lwd = 2)
+plot(SARP, col = 'lightskyblue', lwd = 2); plot(regular, pch = '.', col = 'red', add = T);title("Regular Sampling", line = 0, cex.main = 2); plot(extent, col = 'black', add = T, lwd = 2)
+
+```

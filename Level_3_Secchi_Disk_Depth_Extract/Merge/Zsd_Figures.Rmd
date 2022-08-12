@@ -1,0 +1,796 @@
+---
+title: "ZSD_figures"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r, include = F}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+library(zoo)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+
+Figs <- paste0(filepath, "Outputs/Merged/Figures/PDF/")
+Tabs <- paste0(filepath, "Outputs/Merged/Tables/")
+
+TS_Tabs <- paste0(filepath, "Outputs/Merged/Tables/All_years/")
+Rast <- paste0(filepath, "Outputs/Merged/Raster_stats/Year_avg/")
+
+#Read in rasters
+mean_stat <- raster(paste0(Rast, "Mean.tif"))
+count <- raster(paste0(Rast, "Count.tif"))
+max <- raster(paste0(Rast, "Max.tif"))
+min <- raster(paste0(Rast, "Min.tif"))
+range <- raster(paste0(Rast, "Range.tif"))
+stdv <- raster(paste0(Rast, "Stdv.tif"))
+
+#Read in time series tables
+site_ts <- read.csv(paste0(TS_Tabs, 'site_ts.csv'))
+rand_ts_df <- read.csv(paste0(TS_Tabs, 'random_ts.csv'))
+strat_ts_df <- read.csv(paste0(TS_Tabs, 'strat_ts.csv'))
+reg_ts_df <- read.csv(paste0(TS_Tabs, 'regular_ts.csv'))
+
+#Read in time series stats
+site_stats <- read.csv(paste0(TS_Tabs, 'site_stats.csv'))
+rand_stats <- read.csv(paste0(TS_Tabs, 'random_stats.csv'))
+strat_stats <- read.csv(paste0(TS_Tabs, 'strat_stats.csv'))
+reg_stats <- read.csv(paste0(TS_Tabs, 'regular_stats.csv'))
+
+#Read in spatial analysis tables
+site_sa <- read.csv(paste0(TS_Tabs, 'site_sa.csv'))
+rand_sa_df <- read.csv(paste0(TS_Tabs, 'random_sa.csv'))
+strat_sa_df <- read.csv(paste0(TS_Tabs, 'strat_sa.csv'))
+reg_sa_df <- read.csv(paste0(TS_Tabs, 'regular_sa.csv'))
+
+#Read in water AOI
+SARP <- spTransform(readOGR('C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/Inputs/AOI/Water.shp', verbose = F), crs(mean_stat))
+Sites <- spTransform(readOGR('C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/Inputs/AOI/Site_locations.shp', verbose = F), crs(mean_stat))
+```
+
+#Identify and remove outliers
+```{r}
+reg_out <- as.data.frame(rowMeans(t(reg_ts_df[,c(11:ncol(reg_ts_df))]), na.rm = T))
+names(reg_out) <- c('RowMeans')
+hist(reg_out$RowMeans, breaks = 50, main = "Regular With Outliers")
+out <- boxplot.stats(reg_out$RowMeans)$out; out_ind <- which(reg_out$RowMeans %in% c(out))
+
+if (length(out_ind) > 0) {
+  hist(reg_out[-(out_ind), ], breaks = 50, main = "Regular Without Outliers")
+  reg_ts = reg_ts_df[,-(out_ind + 10)] 
+  } else {reg_ts <- reg_ts_df}
+
+outlier_ts_reg <- reg_ts_df[, c(1:10, out_ind + 10)]
+outlier_sa_reg <- reg_sa_df[(out_ind),]
+
+rand_out <- as.data.frame(rowMeans(t(rand_ts_df[,c(11:ncol(rand_ts_df))]), na.rm = T))
+names(rand_out) <- c('RowMeans')
+hist(rand_out$RowMeans, breaks = 50, main = "Random With Outliers")
+out <- boxplot.stats(rand_out$RowMeans)$out; out_ind <- which(rand_out$RowMeans %in% c(out))
+
+if (length(out_ind) > 0) {
+  hist(rand_out[-(out_ind), ], breaks = 50, main = "Random Without Outliers")
+  rand_ts = rand_ts_df[,-(out_ind + 10)]
+  } else {rand_ts <- rand_ts_df}
+
+outlier_ts_rand <- rand_ts_df[, c(1:10, out_ind + 10)]
+outlier_sa_rand <- rand_sa_df[out_ind,]
+
+strat_out <- as.data.frame(rowMeans(t(strat_ts_df[,c(11:ncol(strat_ts_df))]), na.rm = T))
+names(strat_out) <- c('RowMeans')
+hist(strat_out$RowMeans, breaks = 50, main = "Stratified With Outliers")
+out <- boxplot.stats(strat_out$RowMeans)$out; out_ind <- which(strat_out$RowMeans %in% c(out))
+
+if (length(out_ind) > 0) {
+  hist(strat_out[-(out_ind), ], breaks = 50, main = "Stratified Without Outliers")
+  strat_ts = strat_ts_df[,-(out_ind + 10)] 
+  } else {strat_ts <- strat_ts_df}
+
+outlier_ts_strat <- strat_ts_df[, c(1:10, out_ind + 10)]
+outlier_sa_strat <- strat_sa_df[out_ind,]
+
+```
+#Write outlier dataframs to output directory
+```{r}
+#Time series df without outliers
+write.csv(rand_ts,paste0(Tabs, 'All_years/random_ts_out.csv'), row.names = F)
+write.csv(strat_ts,paste0(Tabs, 'All_years/stratified_ts_out.csv'), row.names = F)
+write.csv(reg_ts,paste0(Tabs, 'All_years/regular_ts_out.csv'), row.names = F)
+
+#Write outliers to output directory 
+write.csv(outlier_sa_rand, paste0(Tabs, 'Outliers/random_ts_outlier.csv'), row.names = F)
+write.csv(outlier_sa_reg, paste0(Tabs, 'Outliers/regular_ts_outlier.csv'), row.names = F)
+write.csv(outlier_sa_strat, paste0(Tabs, 'Outliers/stratified_ts_outlier.csv'), row.names = F)
+```
+
+#Stats distribution histogram
+```{r, include = F}
+#Read in stats from raster stats directory
+mean_mean <- round(cellStats(mean_stat, "mean"),2)
+count_mean <- round(cellStats(count, "mean"),2)
+max_mean <- round(cellStats(max, "mean"),2)
+min_mean <- round(cellStats(min, "mean"),2)
+range_mean <- round(cellStats(range, "mean"),2)
+stdv_mean <- round(cellStats(stdv, "mean"),2)
+
+#Plot histograms of each stats distribution in a 3x2 figure
+pdf(paste0(Figs, "Distribution/stats_distributions.pdf") ,width=18.5, height = 14) #, units = "in", res = 300)
+par(mfrow= c(2,3),mai=c(0,1.3,0,0.3),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 's')
+
+#Count histogram
+hist(count, breaks = 100, axes = F,  xlab="",ylab="", col='red', xlim = c(0,200), ylim = c(0,5000), bty = 'n', main = paste0('Distribution of \n Cell Counts'), cex.main = 2.7, line = 2.5)
+
+axis(1,c("0","50", "100","150", "200"), at=c("0","50", "100","150", "200"), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,1000, 2000, 3000, 4000, 5000),at=c(0,1000, 2000, 3000, 4000, 5000), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1,cex.axis=2,font.axis=1,font.lab=4,las=0)
+
+box()
+mtext(expression(paste("Cell Count")), side = 1, line=5,cex=1.8)
+mtext(expression(paste("Frequency")), side = 2, line=4,cex=1.8)
+
+legend(x = 'topright', paste0('Mean Count = ', count_mean), col = c('black'), cex = 2, text.font = 1, bty = 'n', y.intersp = 1.3)
+
+#Mean histogram
+hist(mean_stat, breaks = 100, axes = F,  xlab="",ylab="", col='lightskyblue', xlim = c(0,2), ylim = c(0,15000), bty = 'n', main = paste0('Distribution of \n Mean Cell Values'), cex.main = 2.7, line = 2.5)
+
+axis(1,c("0", "1", "2"), at=c(0,1,2), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,5000,10000,15000),at=c(0,5000,10000,15000), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1,cex.axis=2,font.axis=1,font.lab=4,las=0)
+
+box()
+mtext(expression(paste("Mean ",italic(Z[sd]), " (m)")), side = 1, line=5,cex=1.8)
+mtext(expression(paste("Frequency")), side = 2, line=4,cex=1.8)
+
+legend(x = 'topright', paste0('Mean Mean = ', mean_mean, " (m)"), col = c('black'), cex = 2, text.font = 1, bty = 'n', y.intersp = 1.3)
+
+#Max histogram
+hist(max, breaks = 100, axes = F,  xlab="",ylab="", col='forestgreen', xlim = c(0,4), ylim = c(0,7500), bty = 'n', main = paste0('Distribution of \n Max Cell Values'), cex.main = 2.7, line = 2.5)
+
+axis(1,c("0", "1", "2", "3", "4"), at=c(0,1,2,3,4), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,2500,5000,7500),at=c(0,2500,5000,7500), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1,cex.axis=2,font.axis=1,font.lab=4,las=0)
+
+box()
+mtext(expression(paste("Max ",italic(Z[sd]), " (m)")), side = 1, line=5,cex=1.8)
+mtext(expression(paste("Frequency")), side = 2, line=4,cex=1.8)
+
+legend(x = 'topright', paste0('Mean Max = ', max_mean, " (m)"), col = c('black'), cex = 2, text.font = 1, bty = 'n', y.intersp = 1.3)
+
+#Min histogram
+hist(min, breaks = 100, axes = F,  xlab="",ylab="", col='purple', xlim = c(0,1), ylim = c(0,40000), bty = 'n', main = paste0('Distribution of \n Min Cell Values'), cex.main = 2.7, line = 2.5)
+
+axis(1,c("0","0.5", "1"), at=c(0,0.5,1), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,10000, 20000, 30000, 40000),at=c(0,10000, 20000, 30000, 40000), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1,cex.axis=2,font.axis=1,font.lab=4,las=0)
+
+box()
+mtext(expression(paste("Min ",italic(Z[sd]), " (m)")), side = 1, line=5,cex=1.8)
+mtext(expression(paste("Frequency")), side = 2, line=4,cex=1.8)
+
+legend(x = 'topright', paste0('Mean Min = ', min_mean, " (m)"), col = c('black'), cex = 2, text.font = 1, bty = 'n', y.intersp = 1.3)
+
+#Range histogram
+hist(range, breaks = 100, axes = F,  xlab="",ylab="", col='slategrey', xlim = c(0,1.25), ylim = c(0,10000), bty = 'n', main = paste0('Distribution of \n Range Cell Values'), cex.main = 2.7, line = 2.5)
+
+axis(1,c("0", "0.5", "1"), at=c(0,0.5,1), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,2500,5000,7500,10000),at=c(0,2500,5000,7500,10000), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1,cex.axis=2,font.axis=1,font.lab=4,las=0)
+
+box()
+mtext(expression(paste("Range ",italic(Z[sd]), " (m)")), side = 1, line=5,cex=1.8)
+mtext(expression(paste("Frequency")), side = 2, line=4,cex=1.8)
+
+legend(x = 'topright', paste0('Mean Range = ', range_mean, " (m)"), col = c('black'), cex = 2, text.font = 1, bty = 'n', y.intersp = 1.3)
+
+#Standard deviation histogram
+hist(stdv, breaks = 100, axes = F,  xlab="",ylab="", col='#C71585', xlim = c(0,0.5), ylim = c(0,30000), bty = 'n', main = paste0('Distribution of \n StdDev Cell Values'), cex.main = 2.7, line = 2.5)
+
+axis(1,c("0","0.25", "0.5"), at=c(0,0.25,0.5), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,10000, 20000, 30000),at=c(0,10000, 20000, 30000), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1,cex.axis=2,font.axis=1,font.lab=4,las=0)
+
+box()
+mtext(expression(paste("Standard Deviation ",italic(Z[sd]))), side = 1, line=5,cex=1.8)
+mtext(expression(paste("Frequency")), side = 2, line=4,cex=1.8)
+
+legend(x = 'topright', paste0('Mean StdDev = ', stdv_mean), col = c('black'), cex = 2, text.font = 1, bty = 'n', y.intersp = 1.3)
+
+dev.off()
+
+```
+
+#DOY scatter plot
+```{r}
+#Scatter plot of DOY vs Secchi disk depth values at sampling sites
+pdf(paste0(Figs, "/DOY/doy_site_comparable_scatter.pdf") ,width=22, height = 17) #, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+plot(site_ts$X1~ site_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, axes = F,  xlab="",ylab="", col = 'black', bg = 'grey')
+title(expression(paste(italic(Z[sd])," by Day of Year using Site Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("0", "50", "100", "150", "200", "250", "300", "350"), at=c(0,50,100,150,200,250,300,350), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1.5, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste("Day of Year")), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=5,cex=3)
+
+for (i in which( colnames(site_ts)=="X2" ):(dim(site_ts)[2])-1) {
+  points(site_ts[,i] ~ site_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, col = 'black', bg = 'grey')
+}
+points(site_stats$Mean ~ site_ts$DOY, pch = 24, col = 'black', bg = 'red', cex = 2)
+dev.off()
+
+#Scatter plot of DOY vs Secchi disk depth values at sampling sites, zoomed in 
+pdf(paste0(Figs, "/DOY/doy_site_zoomed_scatter.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+plot(site_ts$X1~ site_ts$DOY, xlim = c(0,365), ylim = c(0.5,1), pch = 21, axes = F,  xlab="",ylab="", col = 'black', bg = 'grey')
+title(expression(paste(italic(Z[sd])," by Day of Year using Site Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("0", "50", "100", "150", "200", "250", "300", "350"), at=c(0,50,100,150,200,250,300,350), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1.5, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0.5,0.6,0.7,0.8,0.9,1),at=c(0.5,0.6,0.7,0.8,0.9,1), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste("Day of Year")), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=5,cex=3)
+
+for (i in which( colnames(site_ts)=="X2" ):(dim(site_ts)[2])-1) {
+  points(site_ts[,i] ~ site_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, col = 'black', bg = 'grey')
+}
+points(site_stats$Mean ~ site_ts$DOY, pch = 24, col = 'black', bg = 'red', cex = 2)
+dev.off()
+
+#Scatter plot of DOY vs Secchi disk depth values with random sampling schema sites
+pdf(paste0(Figs, "/DOY/doy_rand_scatter.pdf") ,width=22, height = 17) #, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+plot(rand_ts$X1~ rand_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, axes = F,  xlab="",ylab="", col = 'black', bg = 'grey')
+title(expression(paste(italic(Z[sd])," by Day of Year using Random Sampling")), line = 2, cex.main = 3)
+
+axis(1,c("0", "50", "100", "150", "200", "250", "300", "350"), at=c(0,50,100,150,200,250,300,350), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1.5, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste("Day of Year")), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=5,cex=3)
+
+for (i in which( colnames(rand_ts)=="X2" ):(dim(rand_ts)[2])-1) {
+  points(rand_ts[,i] ~ rand_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, col = 'black', bg = 'grey')
+}
+points(rand_stats$Mean ~ rand_ts$DOY, pch = 24, col = 'black', bg = 'red', cex = 2)
+dev.off()
+
+#Scatter plot of DOY vs Secchi disk depth values with stratified random sampling schema sites
+pdf(paste0(Figs, "/DOY/doy_strat_scatter.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+plot(strat_ts$X1~ strat_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, axes = F,  xlab="",ylab="", col = 'black', bg = 'grey')
+title(expression(paste(italic(Z[sd])," by Day of Year using Stratified Random Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("0", "50", "100", "150", "200", "250", "300", "350"), at=c(0,50,100,150,200,250,300,350), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1.5, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste("Day of Year")), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=5,cex=3)
+
+for (i in which( colnames(strat_ts)=="X2" ):(dim(strat_ts)[2])-1) {
+  points(strat_ts[,i] ~ strat_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, col = 'black', bg = 'grey')
+}
+points(strat_stats$Mean ~ strat_ts$DOY, pch = 24, col = 'black', bg = 'red', cex = 2)
+dev.off()
+
+#Scatter plot of DOY vs Secchi disk depth values with random sampling schema sites
+pdf(paste0(Figs, "/DOY/doy_reg_scatter.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+plot(reg_ts$X1~ reg_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, axes = F,  xlab="",ylab="", col = 'black', bg = 'grey')
+title(expression(paste(italic(Z[sd])," by Day of Year using Regular Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("0", "50", "100", "150", "200", "250", "300", "350"), at=c(0,50,100,150,200,250,300,350), tck=-0.01, mgp=c(0,1.6,0), las=0, cex.lab=1.5, cex.axis=2, font.axis=1, font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste("Day of Year")), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=5,cex=3)
+
+for (i in which( colnames(reg_ts)=="X2" ):(dim(reg_ts)[2])-1) {
+  points(reg_ts[,i] ~ reg_ts$DOY, xlim = c(0,365), ylim = c(0,7), pch = 21, col = 'black', bg = 'grey')
+}
+points(reg_stats$Mean ~ reg_ts$DOY, pch = 24, col = 'black', bg = 'red', cex = 2)
+
+dev.off()
+
+```
+
+#Monthly Boxplot
+```{r}
+library(tidyverse)
+
+#Boxplot of monthly Secchi disk depth values at sampling sites
+pdf(paste0(Figs, "/Monthly/site_month_comparative_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+site_grouped <- as_tibble(site_ts)
+df2 <- site_grouped %>% group_by(Month) %>% summarise(across(X1:colnames(site_grouped)[ncol(site_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec");df3 <- df3[-1,]
+
+names=c(rep("Jan", length(df3$Jan)) , rep("Feb", length(df3$Feb)) ,rep("Mar", length(df3$Mar)), rep("Apr", length(df3$Apr)),rep("May", length(df3$May)),rep("June", length(df3$June)), rep("July", length(df3$July)), rep("Aug", length(df3$Aug)), rep("Sept", length(df3$Sept)), rep("Oct", length(df3$Oct)), rep("Nov", length(df3$Nov)), rep("Dec", length(df3$Dec)))
+
+value=c(df3$Jan, df3$Feb, df3$Mar, df3$Apr, df3$May, df3$June, df3$July, df3$Aug, df3$Sept, df3$Oct, df3$Nov, df3$Dec )
+data=data.frame(names,as.numeric(value))
+data$names <- factor(data$names , levels=c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"))
+names(data) <- c("names", "value")
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF','#00FF00','#FF0000') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="", ylim = c(0,7))
+title(expression(paste(italic(Z[sd])," by Month using Site Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"),at=c(1,2,3,4,5,6,7,8,9,10,11,12),col=c('violetred', 'darkmagenta', 'purple','blue','green','red'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Month')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+#Boxplot of monthly Secchi disk depth values at sampling sites, zoomed
+pdf(paste0(Figs, "/Monthly/site_month_zoomed_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+site_grouped <- as_tibble(site_ts)
+df2 <- site_grouped %>% group_by(Month) %>% summarise(across(X1:colnames(site_grouped)[ncol(site_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec");df3 <- df3[-1,]
+
+names=c(rep("Jan", length(df3$Jan)) , rep("Feb", length(df3$Feb)) ,rep("Mar", length(df3$Mar)), rep("Apr", length(df3$Apr)),rep("May", length(df3$May)),rep("June", length(df3$June)), rep("July", length(df3$July)), rep("Aug", length(df3$Aug)), rep("Sept", length(df3$Sept)), rep("Oct", length(df3$Oct)), rep("Nov", length(df3$Nov)), rep("Dec", length(df3$Dec)))
+
+value=c(df3$Jan, df3$Feb, df3$Mar, df3$Apr, df3$May, df3$June, df3$July, df3$Aug, df3$Sept, df3$Oct, df3$Nov, df3$Dec )
+data=data.frame(names,as.numeric(value))
+data$names <- factor(data$names , levels=c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"))
+names(data) <- c("names", "value")
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF','#00FF00','#FF0000') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="", ylim = c(0.5,1))
+title(expression(paste(italic(Z[sd])," by Month using Site Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"),at=c(1,2,3,4,5,6,7,8,9,10,11,12),col=c('violetred', 'darkmagenta', 'purple','blue','green','red'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0.5, 0.6, 0.7, 0.8, 0.9, 1),at=c(0.5, 0.6, 0.7, 0.8, 0.9, 1), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Month')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+#Boxplot of monthly Secchi disk depth values with random sampling schema
+pdf(paste0(Figs, "/Monthly/rand_month_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+rand_grouped <- as_tibble(rand_ts)
+df2 <- rand_grouped %>% group_by(Month) %>% summarise(across(X1:colnames(rand_grouped)[ncol(rand_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec");df3 <- df3[-1,]
+
+names=c(rep("Jan", length(df3$Jan)) , rep("Feb", length(df3$Feb)) ,rep("Mar", length(df3$Mar)), rep("Apr", length(df3$Apr)),rep("May", length(df3$May)),rep("June", length(df3$June)), rep("July", length(df3$July)), rep("Aug", length(df3$Aug)), rep("Sept", length(df3$Sept)), rep("Oct", length(df3$Oct)), rep("Nov", length(df3$Nov)), rep("Dec", length(df3$Dec)))
+
+value=c(df3$Jan, df3$Feb, df3$Mar, df3$Apr, df3$May, df3$June, df3$July, df3$Aug, df3$Sept, df3$Oct, df3$Nov, df3$Dec )
+data=data.frame(names,as.numeric(value))
+data$names <- factor(data$names , levels=c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"))
+names(data) <- c("names", "value")
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF','#00FF00','#FF0000') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="")
+title(expression(paste(italic(Z[sd])," by Month using Random Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"),at=c(1,2,3,4,5,6,7,8,9,10,11,12),col=c('violetred', 'darkmagenta', 'purple','blue','green','red'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Month')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+#Boxplot of monthly Secchi disk depth values with stratified random sampling schema
+pdf(paste0(Figs, "/Monthly/strat_month_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+strat_grouped <- as_tibble(strat_ts)
+df2 <- strat_grouped %>% group_by(Month) %>% summarise(across(X1:colnames(strat_grouped)[ncol(strat_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec");df3 <- df3[-1,]
+
+names=c(rep("Jan", length(df3$Jan)) , rep("Feb", length(df3$Feb)) ,rep("Mar", length(df3$Mar)), rep("Apr", length(df3$Apr)),rep("May", length(df3$May)),rep("June", length(df3$June)), rep("July", length(df3$July)), rep("Aug", length(df3$Aug)), rep("Sept", length(df3$Sept)), rep("Oct", length(df3$Oct)), rep("Nov", length(df3$Nov)), rep("Dec", length(df3$Dec)))
+
+value=c(df3$Jan, df3$Feb, df3$Mar, df3$Apr, df3$May, df3$June, df3$July, df3$Aug, df3$Sept, df3$Oct, df3$Nov, df3$Dec )
+data=data.frame(names,as.numeric(value))
+data$names <- factor(data$names , levels=c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"))
+names(data) <- c("names", "value")
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF','#00FF00','#FF0000') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="", ylim = c(0,2.5))
+title(expression(paste(italic(Z[sd])," by Month using Stratified Random Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"),at=c(1,2,3,4,5,6,7,8,9,10,11,12),col=c('violetred', 'darkmagenta', 'purple','blue','green','red'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Month')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+#Boxplot of monthly Secchi disk depth values with regular sampling schema
+pdf(paste0(Figs, "/Monthly/reg_month_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+reg_grouped <- as_tibble(reg_ts)
+df2 <- reg_grouped %>% group_by(Month) %>% summarise(across(X1:colnames(reg_grouped)[ncol(reg_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec");df3 <- df3[-1,]
+
+names=c(rep("Jan", length(df3$Jan)) , rep("Feb", length(df3$Feb)) ,rep("Mar", length(df3$Mar)), rep("Apr", length(df3$Apr)),rep("May", length(df3$May)),rep("June", length(df3$June)), rep("July", length(df3$July)), rep("Aug", length(df3$Aug)), rep("Sept", length(df3$Sept)), rep("Oct", length(df3$Oct)), rep("Nov", length(df3$Nov)), rep("Dec", length(df3$Dec)))
+
+value=c(df3$Jan, df3$Feb, df3$Mar, df3$Apr, df3$May, df3$June, df3$July, df3$Aug, df3$Sept, df3$Oct, df3$Nov, df3$Dec )
+data=data.frame(names,as.numeric(value))
+data$names <- factor(data$names , levels=c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"))
+names(data) <- c("names", "value")
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF','#00FF00','#FF0000') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="")
+title(expression(paste(italic(Z[sd])," by Month using Regular Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct","Nov", "Dec"),at=c(1,2,3,4,5,6,7,8,9,10,11,12),col=c('violetred', 'darkmagenta', 'purple','blue','green','red'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Month')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+```
+
+#Seasonal Boxplot
+```{r}
+#Boxplot of seasonal Secchi disk depth values at sampling sites
+pdf(paste0(Figs, "/Seasonal/site_seasonal_mean_comparative_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+site_grouped <- as_tibble(site_ts)
+df2 <- site_grouped %>% group_by(Season) %>% summarise(across(X1:colnames(site_grouped)[ncol(site_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Winter", "Spring", "Summer", "Fall")
+df3 <- df3[-1,]
+
+names=c(rep("Winter", length(df3$Winter)) , rep("Spring", length(df3$Spring)) ,rep("Summer", length(df3$Summer)), rep("Fall", length(df3$Fall)))
+value=c(df3$Winter, df3$Spring, df3$Summer, df3$Fall)
+data=data.frame(names,value)
+data$names <- factor(data$names , levels=c("Winter", "Spring", "Summer", "Fall"))
+data$value <- as.numeric(as.character(data$value))
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="", ylim = c(0,7))
+title(expression(paste("Mean ",italic(Z[sd])," by Season using Site Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Winter", "Spring", "Summer", "Fall"),at=c(1,2,3,4),col=c('violetred', 'darkmagenta', 'purple','blue'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Season')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+#Boxplot of seasonal Secchi disk depth values at sampling sites, zoomed
+pdf(paste0(Figs, "/Seasonal/site_seasonal_mean_zoomed_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+site_grouped <- as_tibble(site_ts)
+df2 <- site_grouped %>% group_by(Season) %>% summarise(across(X1:colnames(site_grouped)[ncol(site_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Winter", "Spring", "Summer", "Fall")
+df3 <- df3[-1,]
+
+names=c(rep("Winter", length(df3$Winter)) , rep("Spring", length(df3$Spring)) ,rep("Summer", length(df3$Summer)), rep("Fall", length(df3$Fall)))
+value=c(df3$Winter, df3$Spring, df3$Summer, df3$Fall)
+data=data.frame(names,value)
+data$names <- factor(data$names , levels=c("Winter", "Spring", "Summer", "Fall"))
+data$value <- as.numeric(as.character(data$value))
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="", ylim = c(0.5,1))
+title(expression(paste("Mean ",italic(Z[sd])," by Season using Site Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Winter", "Spring", "Summer", "Fall"),at=c(1,2,3,4),col=c('violetred', 'darkmagenta', 'purple','blue'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0.5, 0.6, 0.7, 0.8, 0.9, 1),at=c(0.5, 0.6, 0.7, 0.8, 0.9, 1), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Season')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+#Boxplot of seasonal Secchi disk depth values with random sampling schema
+pdf(paste0(Figs, "/Seasonal/rand_seasonal_mean_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+rand_grouped <- as_tibble(rand_ts)
+df2 <- rand_grouped %>% group_by(Season) %>% summarise(across(X1:colnames(rand_grouped)[ncol(rand_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Winter", "Spring", "Summer", "Fall")
+df3 <- df3[-1,]
+
+names=c(rep("Winter", length(df3$Winter)) , rep("Spring", length(df3$Spring)) ,rep("Summer", length(df3$Summer)), rep("Fall", length(df3$Fall)))
+value=c(df3$Winter, df3$Spring, df3$Summer, df3$Fall)
+data=data.frame(names,value)
+data$names <- factor(data$names , levels=c("Winter", "Spring", "Summer", "Fall"))
+data$value <- as.numeric(as.character(data$value))
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="")
+title(expression(paste("Mean ", italic(Z[sd])," by Season using Random Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Winter", "Spring", "Summer", "Fall"),at=c(1,2,3,4),col=c('violetred', 'darkmagenta', 'purple','blue'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Season')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+
+#Boxplot of seasonal Secchi disk depth values with stratified random sampling schema
+pdf(paste0(Figs, "/Seasonal/strat_seasonal_mean_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+strat_grouped <- as_tibble(strat_ts)
+df2 <- strat_grouped %>% group_by(Season) %>% summarise(across(X1:colnames(strat_grouped)[ncol(strat_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Winter", "Spring", "Summer", "Fall")
+df3 <- df3[-1,]
+
+names=c(rep("Winter", length(df3$Winter)) , rep("Spring", length(df3$Spring)) ,rep("Summer", length(df3$Summer)), rep("Fall", length(df3$Fall)))
+value=c(df3$Winter, df3$Spring, df3$Summer, df3$Fall)
+data=data.frame(names,value)
+data$names <- factor(data$names , levels=c("Winter", "Spring", "Summer", "Fall"))
+data$value <- as.numeric(as.character(data$value))
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="")
+title(expression(paste("Mean ", italic(Z[sd])," by Season using Stratified Random Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Winter", "Spring", "Summer", "Fall"),at=c(1,2,3,4),col=c('violetred', 'darkmagenta', 'purple','blue'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Season')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+#Boxplot of seasonal Secchi disk depth values with regular sampling schema
+pdf(paste0(Figs, "/Seasonal/reg_seasonal_mean_boxplot.pdf") ,width=22, height = 17)#, units = "in", res = 300)
+par(mai=c(2.2,2.7,1.2,0.8),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1.75,0), pty = 'm')
+
+reg_grouped <- as_tibble(reg_ts)
+df2 <- reg_grouped %>% group_by(Season) %>% summarise(across(X1:colnames(reg_grouped)[ncol(reg_grouped)], mean, na.rm = T))
+df3 <- as.data.frame(t(df2))
+names(df3) <- c("Winter", "Spring", "Summer", "Fall")
+df3 <- df3[-1,]
+
+names=c(rep("Winter", length(df3$Winter)) , rep("Spring", length(df3$Spring)) ,rep("Summer", length(df3$Summer)), rep("Fall", length(df3$Fall)))
+value=c(df3$Winter, df3$Spring, df3$Summer, df3$Fall)
+data=data.frame(names,value)
+data$names <- factor(data$names , levels=c("Winter", "Spring", "Summer", "Fall"))
+data$value <- as.numeric(as.character(data$value))
+
+boxplot(data$value~data$names,col=c('#C71585','#990099','#9933FF','#0000FF') ,lex.order=FALSE, axes = FALSE, cex.main = 4, xlab="",ylab="")
+title(expression(paste("Mean ", italic(Z[sd])," by Season using Regular Sampling Schema")), line = 2, cex.main = 3)
+
+axis(1,c("Winter", "Spring", "Summer", "Fall"),at=c(1,2,3,4),col=c('violetred', 'darkmagenta', 'purple','blue'),tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+axis(2,c(0,1,2,3,4,5,6,7),at=c(0,1,2,3,4,5,6,7), col="black",tck=-0.01,mgp=c(0,1.6,0),las=0,cex.lab=1.5,cex.axis=2,font.axis=1,font.lab=4,las=0)
+box()
+mtext(expression(paste('Season')), side = 1, line=5,cex=3)
+mtext(expression(paste(italic(Z[sd])," (m)")), side = 2, line=4,cex=3)
+dev.off()
+
+```
+
+#plot time series
+```{r, include = F}
+library(reshape2) 
+library(ggplot2)
+library(RColorBrewer)
+
+pdf(paste0(Figs, "Time_series/site_time_series.pdf"),width=18, height = 12)#, units = "in", res = 300)
+
+site_long <- subset(site_ts, select=-c(Filename, Season, Month, Day, Year, DOY, YM))
+site_long <- melt(site_long, id.vars = "Date")
+site_long$Date <- as.Date(site_long$Date, format = "%m-%d-%Y")
+site_long <- na.omit(site_long)
+names(site_long)<-c("Date", "Site", "Zsd_m")
+
+site_long$Site <- gsub("X", "Site ", site_long$Site)
+#write.csv(site_long, paste0(filepath, "site_freq.csv"))
+
+site_long$Site <- factor(site_long$Site, levels = c("Site 6", "Site 9", "Site 12", "Site 13", "Site 16", "Site 17"))
+
+ggplot(site_long, aes(x = Date, y = Zsd_m, color = Site)) +
+  geom_smooth(se = F, size = 0.5) + 
+  ylim(0.5,1) +
+  scale_x_date(breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                             to = as.Date("2022/01/012"), 
+                                             by = "1 year"), 
+               minor_breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                                   to = as.Date("2022/01/01"), 
+                                                   by = "3 months")) +
+  ggtitle(expression(paste("Time Series of ", italic(Z[sd])," (m) at Sampling Sites"))) + 
+  xlab("Date (YYYY/MM/DD)") + 
+  ylab(expression(paste(italic(Z[sd])," (m)"))) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), 
+        axis.text=element_text(size=20), #change font size of axis text
+        axis.title=element_text(size=20),
+        plot.title = element_text(hjust=0.5, size = 40), #change font size of plot title
+        legend.text=element_text(size=20), #change font size of legend text
+        legend.title=element_blank(),
+        legend.position = "bottom",
+        legend.background = element_rect(fill="grey90",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black")) #+
+  #geom_smooth(se = F, size = 0.5)
+
+dev.off()
+
+```
+
+#Map sampling schema (change for whichever sampling scheme you desire)
+```{r}
+pdf(paste0(Figs, "Distribution/map_sample_schema.pdf"),width=12, height = 14)#, units = "in", res = 300)
+#par(mfrow= c(1,1),mai=c(0.65,0,0.65,0),bg="white",col.axis="black",col.lab="black",lwd=2,col="black",tck=0,mgp=c(3,1,0), pty = 'm')
+
+#spng_data <- Sites[c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17),]
+#spng_nan <- Sites[-c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17),]
+extent <- extent(SARP)
+library(sp)
+coord_folder <- paste0(filepath, "Outputs/Extract/SHPs/")
+strat_points <- spTransform(readOGR(paste0(coord_folder, 'stratified_pts.shp'), verbose = F), crs(max))
+  
+plot(SARP, col = 'lightskyblue', lwd = 1); plot(strat_points, pch = 16, col = 'red', add = T, cex = 0.5)
+#plot(spng_nan, pch = 21, col = 'black', bg = '#D55E00', add = T, cex = 2); 
+
+plot(extent, col = 'black', add = T, lwd = 2)
+title("Stratified Random Sampling Schema", line = -1, cex.main = 2)
+
+dev.off()
+
+```
+
+#Plot regular samplimg schema time series, points being averaged values that fall in the same year and month
+```{r, include = F}
+#Set up dataframe for ggplot
+reg2 <- subset(reg_ts, select=-c(Filename, Season, Month, Year, DOY, Day, YM))
+reg2 <- melt(reg2, id.vars = "Date")
+reg2$Date <- as.Date(reg2$Date, format = "%m-%d-%Y")
+reg2$Date <- format(reg2$Date, format="%Y-%m")
+reg2 <- aggregate(value ~ Date, reg2, mean, na.omit = F)
+month <- reg2$Date
+reg2$Date <- as.Date(paste(month,"-01",sep=""))
+names(reg2)<-c("YM", "Mean")
+
+#Plot
+pdf(paste0(Figs, "Time_series/reg_YM_time_series.pdf"),width=18, height = 12) #, units = "in", res = 300)
+
+ggplot(reg2, aes(x=YM, y=Mean)) +
+  geom_point() +
+  geom_smooth(color="red", fill="#69b3a2", se=TRUE)+
+  scale_x_date(breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                             to = as.Date("2022/01/01"), 
+                                             by = "1 year"), 
+               minor_breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                                   to = as.Date("2022/01/01"), 
+                                                   by = "3 months"),
+               date_labels = "%Y-%m") +
+  ggtitle(expression(paste("Time Series of ", italic(Z[sd])," (m) at Regular Sampling Sites"))) + 
+  xlab("Date (YYYY/MM)") + 
+  ylab(expression(paste(italic(Z[sd])," (m)"))) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), 
+        axis.text=element_text(size=20), #change font size of axis text
+        axis.title=element_text(size=20),
+        plot.title = element_text(hjust=0.5, size = 40)) 
+dev.off()
+
+pdf(paste0(Figs, "Time_series/reg_YM_time_series_lmfit.pdf"),width=18, height = 12) #, units = "in", res = 300)
+
+ggplot(reg2, aes(x=YM, y=Mean)) +
+  geom_point() +
+  geom_smooth(method = lm, color="red", fill="#69b3a2", se=TRUE)+
+  scale_x_date(breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                             to = as.Date("2022/01/01"), 
+                                             by = "1 year"), 
+               minor_breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                                   to = as.Date("2022/01/01"), 
+                                                   by = "3 months"), 
+               date_labels = "%Y-%m") +
+  ggtitle(expression(paste("Time Series of ", italic(Z[sd])," (m) at Regular Sampling Sites"))) + 
+  xlab("Date (YYYY/MM)") + 
+  ylab(expression(paste(italic(Z[sd])," (m)"))) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), 
+        axis.text=element_text(size=20), #change font size of axis text
+        axis.title=element_text(size=20),
+        plot.title = element_text(hjust=0.5, size = 40)) 
+dev.off()
+
+```
+
+#Plot stratified random samplimg schema time series, points being averaged values that fall in the same year and month
+```{r, include = F}
+#Set up dataframe for ggplot
+strat2 <- subset(strat_ts, select=-c(Filename, Season, Month, Year, DOY, Day, YM))
+strat2 <- melt(strat2, id.vars = "Date")
+strat2$Date <- as.Date(strat2$Date, format = "%m-%d-%Y")
+strat2$Date <- format(strat2$Date, format="%Y-%m")
+strat2 <- aggregate(value ~ Date, strat2, mean, na.omit = F)
+month <- strat2$Date
+strat2$Date <- as.Date(paste(month,"-01",sep=""))
+names(strat2)<-c("YM", "Mean")
+
+#Plot
+pdf(paste0(Figs, "Time_series/strat_YM_time_series.pdf"),width=18, height = 12)#, units = "in", res = 300)
+
+ggplot(strat2, aes(x=YM, y=Mean)) +
+  geom_point() +
+  geom_smooth(color="red", fill="#69b3a2", se=TRUE)+
+  scale_x_date(breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                             to = as.Date("2022/01/01"), 
+                                             by = "1 year"), 
+               minor_breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                                   to = as.Date("2022/01/01"), 
+                                                   by = "3 months"),
+               date_labels = "%Y-%m") +
+  ggtitle(expression(paste("Time Series of ", italic(Z[sd])," (m) at Stratified Random Sampling Sites"))) + 
+  xlab("Date (YYYY/MM)") + 
+  ylab(expression(paste(italic(Z[sd])," (m)"))) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), 
+        axis.text=element_text(size=20), #change font size of axis text
+        axis.title=element_text(size=20),
+        plot.title = element_text(hjust=0.5, size = 40)) 
+dev.off()
+
+pdf(paste0(Figs, "Time_series/strat_YM_time_series_lmfit.pdf"),width=18, height = 12)#, units = "in", res = 300)
+
+ggplot(strat2, aes(x=YM, y=Mean)) +
+  geom_point() +
+  geom_smooth(method = lm, color="red", fill="#69b3a2", se=TRUE)+
+  scale_x_date(breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                             to = as.Date("2022/01/01"), 
+                                             by = "1 year"), 
+               minor_breaks = function(x) seq.Date(from = as.Date("2013/01/01"), 
+                                                   to = as.Date("2022/01/01"), 
+                                                   by = "3 months"), 
+               date_labels = "%Y-%m") +
+  ggtitle(expression(paste("Time Series of ", italic(Z[sd])," (m) at Stratified Random Sampling Sites"))) + 
+  xlab("Date (YYYY/MM)") + 
+  ylab(expression(paste(italic(Z[sd])," (m)"))) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), 
+        axis.text=element_text(size=20), #change font size of axis text
+        axis.title=element_text(size=20),
+        plot.title = element_text(hjust=0.5, size = 40)) 
+dev.off()
+
+```
+
+#Scatterplot comparing L8 Secchi disk depth values to bathymetry. Bathymetry flyover was conducted in 2014 so the L8 values are all from 2014. Also plots histogram of L8 Zsd values. 
+```{r}
+Bathymetry <- raster(paste0(filepath, "Map_layers/Bathymetry/Bathymetry.tif"))
+Mean <- raster(paste0(filepath, "Map_layers/Bathymetry/L8_mean_2014.tif"))
+
+Bathymetry <- resample(Bathymetry, Mean, "bilinear")
+Bathymetry[Bathymetry>=0] <- NaN
+Mean[Mean>=2] <- NaN
+
+pdf(paste0(Figs, "Bathymetry/ZsdMean_hist.pdf"),width=18, height = 12)#, units = "in", res = 300)
+hist(Mean, breaks = 1000, xlab = "Mean Zsd (m)")
+dev.off()
+
+writeRaster(Mean, paste0(filepath, "Map_layers/Bathymetry/Mean_2.tif"), overwrite = T)
+
+pdf(paste0(Figs, "Bathymetry/Bathymetry_ZsdMean.pdf"),width=18, height = 12)#, units = "in", res = 300)
+
+plot(Bathymetry, Mean, ylim = c(0,2), xlim = c(-25,0), xlab = "Bathymetry (m)", ylab = "Mean Zsd (m)", main = "Mean Zsd (m) compared to Bathymetry")
+
+dev.off()
+
+```
+
+#Change in Secchi disk depth values acorss the study site between 2013 and 2021
+```{r}
+WQ_2013 <- raster(paste0(filepath, "Outputs/L8/Raster_stats/2013/L8_mean.tif"))
+WQ_2021_L8 <- raster(paste0(filepath, "Outputs/L8/Raster_stats/2021/L8_mean.tif"))
+WQ_2021_S2 <- raster(paste0(filepath, "Outputs/S2/Raster_stats/S2/2021/S2_mean.tif"))
+WQ_2021_S2 <- resample(WQ_2021_S2, WQ_2021_L8, "bilinear")
+WQ_2021 <- stack(WQ_2021_L8, WQ_2021_S2)
+
+WQ_2021 <- stackApply(WQ_2021, indices =  rep(1,nlayers(WQ_2021)), fun = "mean", na.rm = T)
+
+Diff <- WQ_2021 - WQ_2013
+
+writeRaster(Diff, paste0(filepath, "Outputs/Merged/Raster_stats/Difference/Diff_2013_2021.tif"), format = "GTiff", overwrite = T)
+
+plot(Diff)
+
+```
+
+

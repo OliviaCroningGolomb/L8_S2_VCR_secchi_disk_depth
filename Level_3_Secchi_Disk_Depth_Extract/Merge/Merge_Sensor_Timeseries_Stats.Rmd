@@ -1,0 +1,92 @@
+---
+title: "Merge_Sensor_Timeseries_Stats"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+
+```{r setup, include=FALSE}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+
+L8_Tables <- paste0(filepath, "Outputs/L8/Tables/All_years/")
+S2_Tables <- paste0(filepath, "Outputs/S2/Tables/S2/All_years/")
+out_tab <- paste0(filepath, "Outputs/Merged/Tables/All_years/")
+
+```
+
+#Read in timeseries and stats tables
+```{r}
+#stats
+L8_site_stats <- read.csv(paste0(L8_Tables, "site_stats.csv"))
+L8_reg_stats <- read.csv(paste0(L8_Tables, "regular_stats.csv"))
+L8_rand_stats <- read.csv(paste0(L8_Tables, "random_stats.csv"))
+L8_strat_stats <- read.csv(paste0(L8_Tables, "stratified_stats.csv"))
+
+names(L8_site_stats)[names(L8_site_stats) == 'L8_filename'] <- 'Filename'
+names(L8_reg_stats)[names(L8_reg_stats) == 'L8_filename'] <- 'Filename'
+names(L8_rand_stats)[names(L8_rand_stats) == 'L8_filename'] <- 'Filename'
+names(L8_strat_stats)[names(L8_strat_stats) == 'L8_filename'] <- 'Filename'
+
+S2_site_stats <- read.csv(paste0(S2_Tables, "site_stats.csv"))
+S2_reg_stats <- read.csv(paste0(S2_Tables, "regular_stats.csv"))
+S2_rand_stats <- read.csv(paste0(S2_Tables, "random_stats.csv"))
+S2_strat_stats <- read.csv(paste0(S2_Tables, "stratified_stats.csv"))
+
+names(S2_site_stats)[names(S2_site_stats) == 'S2_filename'] <- 'Filename'
+names(S2_reg_stats)[names(S2_reg_stats) == 'S2_filename'] <- 'Filename'
+names(S2_rand_stats)[names(S2_rand_stats) == 'S2_filename'] <- 'Filename'
+names(S2_strat_stats)[names(S2_strat_stats) == 'S2_filename'] <- 'Filename'
+
+#time series
+L8_site_ts <- read.csv(paste0(L8_Tables, "site_ts.csv"))
+L8_reg_ts <- read.csv(paste0(L8_Tables, "regular_ts.csv"))
+L8_rand_ts <- read.csv(paste0(L8_Tables, "random_ts.csv"))
+L8_strat_ts <- read.csv(paste0(L8_Tables, "stratified_ts.csv"))
+
+names(L8_site_ts)[names(L8_site_ts) == 'L8_filename'] <- 'Filename'
+names(L8_reg_ts)[names(L8_reg_ts) == 'L8_filename'] <- 'Filename'
+names(L8_rand_ts)[names(L8_rand_ts) == 'L8_filename'] <- 'Filename'
+names(L8_strat_ts)[names(L8_strat_ts) == 'L8_filename'] <- 'Filename'
+
+S2_site_ts <- read.csv(paste0(S2_Tables, "site_ts.csv"))
+S2_reg_ts <- read.csv(paste0(S2_Tables, "regular_ts.csv"))
+S2_rand_ts <- read.csv(paste0(S2_Tables, "random_ts.csv"))
+S2_strat_ts <- read.csv(paste0(S2_Tables, "stratified_ts.csv"))
+
+names(S2_site_ts)[names(S2_site_ts) == 'S2_filename'] <- 'Filename'
+names(S2_reg_ts)[names(S2_reg_ts) == 'S2_filename'] <- 'Filename'
+names(S2_rand_ts)[names(S2_rand_ts) == 'S2_filename'] <- 'Filename'
+names(S2_strat_ts)[names(S2_strat_ts) == 'S2_filename'] <- 'Filename'
+
+```
+
+#Merge and export timeseries and stats tables
+```{r}
+rand_stats <- rbind(L8_rand_stats, S2_rand_stats)
+reg_stats <- rbind(L8_reg_stats, S2_reg_stats)
+site_stats <- rbind(L8_site_stats, S2_site_stats)
+strat_stats <- rbind(L8_strat_stats, S2_strat_stats)
+
+write.csv(rand_stats, paste0(out_tab, "random_stats.csv"), row.names = F)
+write.csv(reg_stats, paste0(out_tab, "regular_stats.csv"), row.names = F)
+write.csv(site_stats, paste0(out_tab, "site_stats.csv"), row.names = F)
+write.csv(strat_stats, paste0(out_tab, "strat_stats.csv"), row.names = F)
+
+rand_ts <- rbind(L8_rand_ts, S2_rand_ts)
+reg_ts <- rbind(L8_reg_ts, S2_reg_ts)
+site_ts <- rbind(L8_site_ts, S2_site_ts)
+strat_ts <- rbind(L8_strat_ts, S2_strat_ts)
+
+write.csv(rand_ts, paste0(out_tab, "random_ts.csv"), row.names = F)
+write.csv(reg_ts, paste0(out_tab, "regular_ts.csv"), row.names = F)
+write.csv(site_ts, paste0(out_tab, "site_ts.csv"), row.names = F)
+write.csv(strat_ts, paste0(out_tab, "strat_ts.csv"), row.names = F)
+
+```

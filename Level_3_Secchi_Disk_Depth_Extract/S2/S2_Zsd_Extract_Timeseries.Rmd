@@ -1,0 +1,167 @@
+---
+title: "S2_Zsd_Extract_Timeseries"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r}
+#Clear environment
+rm(list=ls())
+
+#read in libraries
+library(raster)
+library(rgdal)
+
+#Create directories
+sensor = "S2A" #change for target sensor
+year = "2021/" #change for target year
+
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+S2_Folder <- paste0(filepath, "Inputs/S2/", sensor, "/Resampled/", sensor, "_", year)
+S2_Out_rast <- paste0(filepath, "Outputs/S2/Raster_stats/", sensor, "/", year)
+S2_Out_tabs <- paste0(filepath, "Outputs/S2/Tables/", sensor, "/", year)
+
+#List and read files
+S2_all <- list.files(S2_Folder, full.names = TRUE, pattern = '*_resampled.tif')
+S2_rasters <- lapply(S2_all,raster)
+
+#Read in water AOI
+S21 <- S2_rasters[[1]]
+SARP <- spTransform(readOGR(paste0(filepath, 'Inputs/AOI/Water.shp'), verbose = F), crs(S21))
+Sites <- spTransform(readOGR(paste0(filepath, 'Inputs/AOI/Site_locations.shp'), verbose = F), crs(S21))
+
+#Plot area of interest and sample site locations
+plot(SARP, col = 'lightblue', main = 'Area of Interest - Water', cex.main = 0.75, line = 0.25); plot(Sites, pch = 21, cex = 0.75, col = 'black', bg = 'red', add = T); legend(422000,4109000, legend = c("Sampling Site Locations"), col = 'black', pt.bg = 'red', pch = 21, cex = 0.4, pt.cex = 0.75)
+
+```
+
+
+#Create Raster Stack
+```{r, include = F}
+## Crop raster list to shapefile
+S2_crop <- c()
+for(i in 1:length(S2_rasters)){
+  crop <-  crop(S2_rasters[[i]],SARP)
+  S2_crop <- append(S2_crop,crop)
+}
+
+#Reclassify values that are less than 0 and greater than 7 to NaN
+S2_reclass <- c()
+for (i in 1:length(S2_crop)){
+  m <- S2_crop[[i]]
+  m[m>7]<-NaN
+  m[m<=0] <- NaN
+  S2_reclass <- append(S2_reclass, m)
+}
+
+#Reclassify every non-Nan cell as 1
+S2_count <- c()
+for (i in 1:length(S2_reclass)){
+  n <- S2_reclass[[i]]
+  n[!is.na(n)]<-1
+  S2_count <- append(S2_count, n)
+}
+
+#Stack raster values and cell counts
+S2_n <- stack(S2_count)
+S2_stack <- stack(S2_reclass)
+
+#clear out variables 
+rm(S2_rasters)
+rm(S2_crop)
+rm(S2_count)
+rm(S2_reclass)
+rm(crop)
+rm(resample)
+rm(n)
+rm(m)
+rm(SARP)
+
+```
+
+#Calculate Raster Stats
+```{r, include = F}
+#Calculate one raster layer from the raster stack by applying cell stats 
+S2_mean <- stackApply(S2_stack, indices =  rep(1,nlayers(S2_stack)), fun = "mean", na.rm = T)
+S2_ncell <- stackApply(S2_n, indices =  rep(1,nlayers(S2_n)), fun = "sum", na.rm = T)
+S2_max <- stackApply(S2_stack, indices =  rep(1,nlayers(S2_stack)), fun = "max", na.rm = T)
+S2_min <- stackApply(S2_stack, indices =  rep(1,nlayers(S2_stack)), fun = "min", na.rm = T)
+S2_range <- abs(S2_max - S2_min)
+
+#Write resulting rasters to output folder
+writeRaster(S2_mean, paste0(S2_Out_rast, "S2_mean.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_ncell, paste0(S2_Out_rast, "S2_count.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_max, paste0(S2_Out_rast, "S2_max.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_min, paste0(S2_Out_rast, "S2_min.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_range, paste0(S2_Out_rast, "S2_range.tif"), format = "GTiff", overwrite = T)
+
+#Clear out variables
+rm(S2_mean)
+rm(S2_ncell)
+rm(S2_max)
+rm(S2_min)
+rm(S2_n)
+rm(S2_range)
+
+#Calculate one raster layer from the raster stack by applying cell stats (more computationally intense so these functions take longer to run)
+S2_stdv <- calc(S2_stack, fun = sd, na.rm = T)
+S2_median <- calc(S2_stack, fun = median, na.rm = T)
+
+#Write resulting rasters to output folder
+writeRaster(S2_stdv, paste0(S2_Out_rast, "S2_stdv.tif"), format = "GTiff", overwrite = T)
+writeRaster(S2_median, paste0(S2_Out_rast, "S2_median.tif"), format = "GTiff", overwrite = T)
+
+#Clear out variables
+rm(S2_stdv)
+rm(S2_median)
+
+```
+
+#Extract Secchi Values
+```{r, include = F}
+#Read coordinate shps for sample sites, random, stratified, and regular schema
+coord_folder <- paste0(filepath, "Outputs/Extract/SHPs/")
+sites_df <- spTransform(readOGR(paste0(coord_folder, 'sites_pts.shp'), verbose = F), crs(S21))
+random_df <- spTransform(readOGR(paste0(coord_folder, 'random_pts.shp'), verbose = F), crs(S21))
+stratified_df <- spTransform(readOGR(paste0(coord_folder, 'stratified_pts.shp'), verbose = F), crs(S21))
+regular_df <- spTransform(readOGR(paste0(coord_folder, 'regular_pts.shp'), verbose = F), crs(S21))
+
+#Extract sites timeseries by taking the mean of the cells that fall within a 30m buffer from the site
+coords_sites <- coordinates(sites_df)
+extract_sites <- cbind(coords_sites, as.data.frame(cbind(sites_df, raster::extract(S2_stack, sites_df, buffer = 30, fun = mean))))
+extract_sites = extract_sites[,!(names(extract_sites) %in% c("a"))]
+names(extract_sites)[names(extract_sites) == 'coords.x1'] <- 'Longitude'
+names(extract_sites)[names(extract_sites) == 'coords.x2'] <- 'Latitude'
+n<-dim(extract_sites)[2];extract_sites<-extract_sites[, 1:(n-2)]
+
+#Extract random points timeseries by taking the mean of the cells that fall within a 30m buffer from the site
+coords_random <- coordinates(random_df)
+extract_random <- cbind(coords_random, as.data.frame(cbind(random_df, raster::extract(S2_stack, random_df, buffer = 30, fun = mean))))
+extract_random = extract_random[,!(names(extract_random) %in% c("a"))]
+names(extract_random)[names(extract_random) == 'coords.x1'] <- 'Longitude'
+names(extract_random)[names(extract_random) == 'coords.x2'] <- 'Latitude'
+n<-dim(extract_random)[2];extract_random<-extract_random[, 1:(n-2)]
+
+#Extract stratified points timeseries by taking the mean of the cells that fall within a 30m buffer from the site
+coords_stratified <- coordinates(stratified_df)
+extract_stratified <- cbind(coords_stratified, as.data.frame(cbind(stratified_df, raster::extract(S2_stack, stratified_df, buffer = 16.4042, fun = mean))))
+extract_stratified = extract_stratified[,!(names(extract_stratified) %in% c("a"))]
+names(extract_stratified)[names(extract_stratified) == 'coords.x1'] <- 'Longitude'
+names(extract_stratified)[names(extract_stratified) == 'coords.x2'] <- 'Latitude'
+n<-dim(extract_stratified)[2];extract_stratified<-extract_stratified[, 1:(n-2)]
+
+#Extract regular points timeseries by taking the mean of the cells that fall within a 30m buffer from the site
+coords_regular <- coordinates(regular_df)
+extract_regular <- cbind(coords_regular, as.data.frame(cbind(regular_df, raster::extract(S2_stack, regular_df, buffer = 30, fun = mean))))
+extract_regular = extract_regular[,!(names(extract_regular) %in% c("a"))]
+names(extract_regular)[names(extract_regular) == 'coords.x1'] <- 'Longitude'
+names(extract_regular)[names(extract_regular) == 'coords.x2'] <- 'Latitude'
+n<-dim(extract_regular)[2];extract_regular<-extract_regular[, 1:(n-2)]
+
+#Write spatial analysis dataframe to output directory
+write.csv(extract_sites,paste0(S2_Out_tabs, 'site_sa.csv'), row.names = F)
+write.csv(extract_random,paste0(S2_Out_tabs, 'random_sa.csv'), row.names = F)
+write.csv(extract_stratified,paste0(S2_Out_tabs, 'stratified_sa.csv'), row.names = F)
+write.csv(extract_regular,paste0(S2_Out_tabs, 'regular_sa.csv'), row.names = F)
+
+```

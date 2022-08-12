@@ -1,0 +1,99 @@
+---
+title: "L8_Merge"
+output: html_document
+author: Olivia Cronin-Golomb
+---
+#Set Up Environment
+```{r setup, include=FALSE}
+#Clear environment
+rm(list=ls())
+
+#Read in libraries
+library(raster)
+library(rgdal)
+
+#Create directories
+filepath <- "C:/Users/emb8xg/Documents/Lang_ZSD/Zsd_processing/"
+
+L8_tables <- paste0(filepath, "Outputs/L8/Tables/")
+out_tab <- paste0(filepath, "Outputs/L8/Tables/All_years/")
+
+```
+
+#Read in L8 tables
+```{r}
+#2013
+L8_random_2013 <- read.csv(paste0(L8_tables, "2013/random_sa.csv"))
+L8_regular_2013 <- read.csv(paste0(L8_tables, "2013/regular_sa.csv"))
+L8_strat_2013 <- read.csv(paste0(L8_tables, "2013/stratified_sa.csv"))
+L8_site_2013 <- read.csv(paste0(L8_tables, "2013/site_sa.csv"))
+
+#2014
+L8_random_2014 <- read.csv(paste0(L8_tables, "2014/random_sa.csv"))
+L8_regular_2014 <- read.csv(paste0(L8_tables, "2014/regular_sa.csv"))
+L8_strat_2014 <- read.csv(paste0(L8_tables, "2014/stratified_sa.csv"))
+L8_site_2014 <- read.csv(paste0(L8_tables, "2014/site_sa.csv"))
+
+#2015
+L8_random_2015 <- read.csv(paste0(L8_tables, "2015/random_sa.csv"))
+L8_regular_2015 <- read.csv(paste0(L8_tables, "2015/regular_sa.csv"))
+L8_strat_2015 <- read.csv(paste0(L8_tables, "2015/stratified_sa.csv"))
+L8_site_2015 <- read.csv(paste0(L8_tables, "2015/site_sa.csv"))
+
+#2016
+L8_random_2016 <- read.csv(paste0(L8_tables, "2016/random_sa.csv"))
+L8_regular_2016 <- read.csv(paste0(L8_tables, "2016/regular_sa.csv"))
+L8_strat_2016 <- read.csv(paste0(L8_tables, "2016/stratified_sa.csv"))
+L8_site_2016 <- read.csv(paste0(L8_tables, "2016/site_sa.csv"))
+
+#2017
+L8_random_2017 <- read.csv(paste0(L8_tables, "2017/random_sa.csv"))
+L8_regular_2017 <- read.csv(paste0(L8_tables, "2017/regular_sa.csv"))
+L8_strat_2017 <- read.csv(paste0(L8_tables, "2017/stratified_sa.csv"))
+L8_site_2017 <- read.csv(paste0(L8_tables, "2017/site_sa.csv"))
+
+#2018
+L8_random_2018 <- read.csv(paste0(L8_tables, "2018/random_sa.csv"))
+L8_regular_2018 <- read.csv(paste0(L8_tables, "2018/regular_sa.csv"))
+L8_strat_2018 <- read.csv(paste0(L8_tables, "2018/stratified_sa.csv"))
+L8_site_2018 <- read.csv(paste0(L8_tables, "2018/site_sa.csv"))
+
+#2019
+L8_random_2019 <- read.csv(paste0(L8_tables, "2019/random_sa.csv"))
+L8_regular_2019 <- read.csv(paste0(L8_tables, "2019/regular_sa.csv"))
+L8_strat_2019 <- read.csv(paste0(L8_tables, "2019/stratified_sa.csv"))
+L8_site_2019 <- read.csv(paste0(L8_tables, "2019/site_sa.csv"))
+
+#2020
+L8_random_2020 <- read.csv(paste0(L8_tables, "2020/random_sa.csv"))
+L8_regular_2020 <- read.csv(paste0(L8_tables, "2020/regular_sa.csv"))
+L8_strat_2020 <- read.csv(paste0(L8_tables, "2020/stratified_sa.csv"))
+L8_site_2020 <- read.csv(paste0(L8_tables, "2020/site_sa.csv"))
+
+#2021
+L8_random_2021 <- read.csv(paste0(L8_tables, "2021/random_sa.csv"))
+L8_regular_2021 <- read.csv(paste0(L8_tables, "2021/regular_sa.csv"))
+L8_strat_2021 <- read.csv(paste0(L8_tables, "2021/stratified_sa.csv"))
+L8_site_2021 <- read.csv(paste0(L8_tables, "2021/site_sa.csv"))
+
+```
+
+#Merge tables all years
+```{r}
+library(tidyverse)
+L8_random_list <- list(L8_random_2013, L8_random_2014, L8_random_2015, L8_random_2016, L8_random_2017, L8_random_2018, L8_random_2019, L8_random_2020, L8_random_2021)
+L8_regular_list <- list(L8_regular_2013, L8_regular_2014, L8_regular_2015, L8_regular_2016, L8_regular_2017, L8_regular_2018, L8_regular_2019, L8_regular_2020, L8_regular_2021)
+L8_site_list <- list(L8_site_2013, L8_site_2014, L8_site_2015, L8_site_2016,L8_site_2017, L8_site_2018, L8_site_2019, L8_site_2020, L8_site_2021)
+L8_strat_list <- list(L8_strat_2013, L8_strat_2014, L8_strat_2015, L8_strat_2016,L8_strat_2017, L8_strat_2018, L8_strat_2019, L8_strat_2020, L8_strat_2021)
+
+L8_random_tab <- L8_random_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+L8_regular_tab <- L8_regular_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+L8_site_tab <- L8_site_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+L8_strat_tab <- L8_strat_list %>% reduce(inner_join, by = c("Longitude", "Latitude"))
+
+write.csv(L8_random_tab, paste0(out_tab, "random_sa.csv"))
+write.csv(L8_regular_tab, paste0(out_tab, "regular_sa.csv"))
+write.csv(L8_strat_tab, paste0(out_tab, "strat_sa.csv"))
+write.csv(L8_site_tab, paste0(out_tab, "site_sa.csv"))
+
+```
